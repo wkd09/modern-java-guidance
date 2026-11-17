@@ -159,10 +159,10 @@ GUIDES: tuple[GuideEntry, ...] = (
         min_java=17,
         min_boot="3.0",
         tags=("security", "csrf", "lambda-dsl", "boot3"),
-        summary="Replace deprecated chained .csrf().disable() with Lambda DSL .csrf(AbstractHttpConfigurer::disable).",
+        summary="Replace deprecated chained .csrf().disable() with Lambda DSL; keep CSRF enabled by default.",
         before_code="http.csrf().disable();",
-        after_code="http.csrf(AbstractHttpConfigurer::disable);",
-        caveat="Only disable CSRF for stateless token APIs without browser cookie sessions.",
+        after_code="http.csrf(AbstractHttpConfigurer::disable); // only for Bearer/token auth, never HTTP Basic or cookies",
+        caveat="Keep CSRF enabled by default; stateless sessions do not protect HTTP Basic or cookie auth in browsers. Only disable CSRF for non-browser-attached credentials (e.g. Bearer JWT).",
     ),
     GuideEntry(
         guide_id="BOOT-007",

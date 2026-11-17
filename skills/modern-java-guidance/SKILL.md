@@ -25,7 +25,8 @@ mjg detect .
 - **Java 17**: Use `record`, `sealed` classes/interfaces, `switch` expressions, text blocks, `List.of`/`Map.of`, `var`, and `java.time`. Do not use Java 21 APIs (`SequencedCollection`, Virtual Threads, Record Patterns).
 - **Java 21+ (or greenfield code)**: Use Java 21+ idioms including Pattern Matching for `switch`, Record Patterns, `SequencedCollection` (`getFirst()`, `getLast()`, `reversed()`), and Virtual Threads (`Executors.newVirtualThreadPerTaskExecutor()`).
 - **Spring Boot 2.x**: Keep `javax.*` and existing Spring Security 5 / `RestTemplate` APIs unless migrating to Boot 3.
-- **Spring Boot 3.x+**: Strictly use `jakarta.*`, `SecurityFilterChain` + Lambda DSL + `requestMatchers()`, `RestClient` / `@HttpExchange` (Boot 3.2+), and constructor injection.
+- **Spring Boot 3.0–3.1**: Use `jakarta.*`, `SecurityFilterChain` + Lambda DSL + `requestMatchers()`, and constructor injection. (`RestClient` is not available yet; keep `WebClient` or `RestTemplate`.)
+- **Spring Boot 3.2+**: Also prefer `RestClient` / `@HttpExchange` over `RestTemplate`.
 
 ---
 
