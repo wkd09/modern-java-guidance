@@ -84,18 +84,35 @@ Most agent skills only inject a static markdown prompt—if the model forgets a 
 
 ## Quickstart
 
-Requires **Python 3.11+** with **zero third-party runtime dependencies**.
+### Option 1: Try Without Installing (`uvx`)
+
+Run directly against any Java/Spring Boot project in one command:
 
 ```bash
-# 1. Install the `mjg` CLI
-uv tool install git+https://github.com/wkd09/modern-java-guidance.git
-# (or: pip install git+https://github.com/wkd09/modern-java-guidance.git)
-
-# 2. Set up your project (installs skill + configures PostToolUse hooks)
-mjg setup --target all --dir /path/to/your/spring-boot-project
+uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 ```
 
-### Try It Right Now
+### Option 2: One-Line Install (`curl`)
+
+Installs `mjg` automatically using `uv`, `pipx`, or `pip` (Python 3.11+, zero external dependencies):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wkd09/modern-java-guidance/main/install.sh | bash
+```
+
+Then enable the Skill + `PostToolUse` hook inside your Java/Spring Boot project:
+
+```bash
+mjg setup --target all --dir .
+```
+
+### Option 3: Agent Skill Only (`skills` CLI)
+
+```bash
+npx skills add wkd09/modern-java-guidance
+```
+
+### Everyday CLI Usage
 
 ```bash
 # Detect Java & Spring Boot versions from pom.xml / build.gradle(.kts)
