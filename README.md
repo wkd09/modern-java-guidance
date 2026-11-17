@@ -123,6 +123,10 @@ mjg detect .
 # Scan Java sources respecting the detected versions
 mjg check src/
 
+# Search & retrieve on-demand Before/After guides (inspired by GoogleChrome/modern-web-guidance)
+mjg search "security"
+mjg retrieve BOOT-002
+
 # Or override versions explicitly
 mjg check src/ --java 21 --boot 3.3.0 --strict
 ```

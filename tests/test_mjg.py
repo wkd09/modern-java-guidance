@@ -203,6 +203,11 @@ java {
             self.assertEqual(main(["detect", str(root)]), 0)
             self.assertEqual(main(["check", str(root), "--strict"]), 0)
 
+    def test_cli_search_and_retrieve(self) -> None:
+        self.assertEqual(main(["search", "security"]), 0)
+        self.assertEqual(main(["retrieve", "BOOT-002"]), 0)
+        self.assertEqual(main(["retrieve", "NONEXISTENT-999"]), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

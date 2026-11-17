@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from modern_java_guidance.detector import ProjectProfile, _parse_boot_tuple, detect_project
+from modern_java_guidance.guides import retrieve_guide, search_guides
 from modern_java_guidance.hook import run_hook
 from modern_java_guidance.scanner import scan_target
 
@@ -73,6 +74,41 @@ def _cmd_hook(args: argparse.Namespace) -> int:
     if stderr_msg:
         print(stderr_msg, file=sys.stderr)
     return code
+
+
+def _cmd_search(args: argparse.Namespace) -> int:
+    matches = search_guides(args.query)
+    if args.json:
+        print(json.dumps([m.to_dict() for m in matches], indent=2))
+        return 0
+    if not matches:
+        print(f"No guides matched '{args.query}'.")
+        return 1
+    for m in matches:
+        gate = f"Java {m.min_java}+" + (f", Boot {m.min_boot}+" if m.min_boot else "")
+        print(f"{m.guide_id:<8} [{gate}] {m.title}")
+        print(f"         {m.summary}")
+    return 0
+
+
+def _cmd_retrieve(args: argparse.Namespace) -> int:
+    entry = retrieve_guide(args.guide_id)
+    if entry is None:
+        print(f"Error: unknown guide ID '{args.guide_id}'. Run 'mjg search' to list guides.", file=sys.stderr)
+        return 1
+    if args.json:
+        print(json.dumps(entry.to_dict(), indent=2))
+        return 0
+
+    gate = f"Java {entry.min_java}+" + (f", Spring Boot {entry.min_boot}+" if entry.min_boot else "")
+    print(f"# {entry.guide_id}: {entry.title} ({gate})")
+    print(f"\n{entry.summary}\n")
+    print("## Before (Legacy)")
+    print(entry.before_code)
+    print("\n## After (Modern)")
+    print(entry.after_code)
+    print(f"\n## Caveat\n{entry.caveat}")
+    return 0
 
 
 def _cmd_setup(args: argparse.Namespace) -> int:
@@ -170,6 +206,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_hook = sub.add_parser("hook", help="Run as a PostToolUse hook reading JSON from stdin.")
     p_hook.add_argument("--format", choices=("antigravity", "claude"), default="antigravity")
     p_hook.set_defaults(func=_cmd_hook)
+
+    p_search = sub.add_parser("search", help="Search modern Java/Spring Boot pattern guides by keyword.")
+    p_search.add_argument("query", nargs="?", default="", help="Search keywords (omit to list all)")
+    p_search.add_argument("--json", action="store_true", help="Output JSON")
+    p_search.set_defaults(func=_cmd_search)
+
+    p_retrieve = sub.add_parser("retrieve", help="Retrieve full Before/After guide by ID (e.g. BOOT-002).")
+    p_retrieve.add_argument("guide_id", help="Guide ID (e.g. JAVA-010, BOOT-002)")
+    p_retrieve.add_argument("--json", action="store_true", help="Output JSON")
+    p_retrieve.set_defaults(func=_cmd_retrieve)
 
     p_setup = sub.add_parser("setup", help="Install global skill and configure PostToolUse hooks.")
     p_setup.add_argument("--target", choices=("antigravity", "claude", "all"), default="antigravity")

@@ -46,7 +46,13 @@ mjg detect .
 
 ---
 
-## Step 3: References
+## Step 3: On-Demand Guides & References
+
+For token-efficient lookups without loading full reference files, query the built-in catalog:
+```bash
+mjg search "<topic>"      # e.g. mjg search "security" or mjg search "virtual-threads"
+mjg retrieve <GUIDE_ID>   # e.g. mjg retrieve BOOT-002
+```
 
 - **Java 17/21/25 Language & Stdlib Patterns**: Read [references/java-21-25-core.md](./references/java-21-25-core.md)
 - **Spring Boot 3.x+ & Spring Security 6 Patterns**: Read [references/spring-boot-3x.md](./references/spring-boot-3x.md)

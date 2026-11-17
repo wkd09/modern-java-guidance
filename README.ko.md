@@ -122,6 +122,10 @@ mjg detect . --json
 # 감지된 버전 기준으로 Java 소스 스캔
 mjg check src/
 
+# 필요한 패턴 가이드만 온디맨드로 검색 및 조회 (GoogleChrome/modern-web-guidance 방식)
+mjg search "security"
+mjg retrieve BOOT-002
+
 # 버전을 직접 지정해 엄격 모드(--strict)로 검사
 mjg check src/ --java 21 --boot 3.3.0 --strict
 ```

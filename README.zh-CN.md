@@ -122,6 +122,10 @@ mjg detect . --json
 # 按检测到的版本扫描 Java 源码
 mjg check src/
 
+# 按关键字或 ID 按需检索现代写法指南（参考 GoogleChrome/modern-web-guidance）
+mjg search "security"
+mjg retrieve BOOT-002
+
 # 手动指定版本并开启严格模式
 mjg check src/ --java 21 --boot 3.3.0 --strict
 ```
