@@ -182,15 +182,35 @@ def bench_accuracy() -> dict[str, object]:
 
 def main() -> None:
     print("=== 1. Project Scan Throughput (detect + scan_target) ===")
-    for n in (10, 100, 500):
+    for n in (10, 100, 500, 1000):
         runs = [bench_project_scan(n) for _ in range(3)]
         times = [r[0] for r in runs]
         findings_count = runs[0][1]
         med = statistics.median(times)
         per_file = med / n
-        print(f"  {n:>3} Java files: median {med:6.2f} ms ({per_file:.3f} ms/file) | {findings_count} findings")
+        print(f"  {n:>4} Java files: median {med:6.2f} ms ({per_file:.3f} ms/file) | {findings_count} findings")
 
-    print("\n=== 2. PostToolUse Hook Latency (50 runs, single edited file) ===")
+    print("\n=== 2. Build File Detection Latency (50 runs each) ===")
+    for label, filename, content in (
+        ("pom.xml", "pom.xml", POM_BOOT3_JAVA21),
+        (
+            "build.gradle.kts",
+            "build.gradle.kts",
+            'plugins { id("org.springframework.boot") version "3.3.4" }\njava { toolchain { languageVersion.set(JavaLanguageVersion.of(21)) } }\n',
+        ),
+        (".java-version", ".java-version", "21\n"),
+    ):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / filename).write_text(content, encoding="utf-8")
+            det_times = []
+            for _ in range(50):
+                t0 = time.perf_counter()
+                detect_project(root)
+                det_times.append((time.perf_counter() - t0) * 1000.0)
+            print(f"  {label:<16}: median {statistics.median(det_times):.3f} ms")
+
+    print("\n=== 3. PostToolUse Hook Latency (50 runs, single edited file) ===")
     latencies = bench_post_tool_hook(50)
     latencies_sorted = sorted(latencies)
     p50 = statistics.median(latencies)
@@ -198,7 +218,7 @@ def main() -> None:
     p99 = latencies_sorted[-1]
     print(f"  p50: {p50:.3f} ms | p95: {p95:.3f} ms | max: {p99:.3f} ms")
 
-    print("\n=== 3. Detection Accuracy (Java 21 + Spring Boot 3.3.4) ===")
+    print("\n=== 4. Detection Accuracy (Java 21 + Spring Boot 3.3.4) ===")
     acc = bench_accuracy()
     print(f"  Legacy rules detected : {acc['detected_rule_count']}/{acc['expected_rule_count']} (missing: {acc['missing_rules']})")
     print(f"  Modern false positives: {acc['modern_false_positives']}")

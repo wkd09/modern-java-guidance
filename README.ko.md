@@ -181,17 +181,33 @@ flowchart LR
 
 ## 벤치마크
 
+### 1. 기존 Java / Spring Boot 에이전트 스킬 비교
+
+| 비교 항목 | **`modern-java-guidance` (`mjg`)** | **`github/awesome-copilot`**<br>(`java-springboot` + `spring-security`) | **`Amplicode/spring-skills`**<br>(`spring-security-configuration`) | **`Santoshrt999/Java-Claude-Skills`**<br>(`java-modernization-review`) |
+| :--- | :--- | :--- | :--- | :--- |
+| **초기 `SKILL.md` 크기** | **4,157 bytes** (최경량) | 9,737 bytes (4,433 + 5,304) | 17,344 bytes (4.2배) | 20,103 bytes (4.8배) |
+| **실행형 CLI 스캐너** | ✅ `mjg check` (LLM 토큰 0) | ❌ 마크다운 문서만 제공 | ❌ 없음 | ❌ 마크다운 문서만 제공 |
+| **빌드 파일 버전 자동 감지** | ✅ `mjg detect` (`pom.xml` / Gradle) | ⚠️ 에이전트 수동 읽기 | ⚠️ IntelliJ MCP 서버 필수 | ❌ 없음 |
+| **`PostToolUse` 자동 차단 훅** | ✅ Antigravity & Claude Code | ❌ 없음 | ❌ 없음 | ❌ 없음 |
+| **외부 / IDE 의존성** | **없음** (Python 표준 라이브러리만 사용) | 없음 | ❌ IntelliJ Amplicode 플러그인 & MCP 필수 | 없음 |
+| **Java 21+ & Spring Boot 3+ 범위** | ✅ 모두 지원 | ✅ Boot 3/4 & Security 6/7 | ✅ Spring 생태계 전반 | ⚠️ Java 8→21 위주 (Boot 규칙 없음) |
+
+> **실제 프로젝트 검증 사례**: `Santoshrt999/Java-Claude-Skills/examples`에 `mjg`를 실행하면 `pom.xml`에서 Java 21을 자동 감지하고 `TradeProcessor.java:15`의 `Executors.newFixedThreadPool(10)` (`[JAVA-010]`)을 즉시 검출합니다.
+
+### 2. `mjg` 처리량 · 지연시간 · 정확도 실측
+
 `python3 scripts/benchmark.py` 실측 결과 (Apple Silicon, Python 표준 라이브러리만 사용):
 
-| 측정 항목 | 결과 |
-| :--- | :--- |
-| **10개 Java 파일** (`detect` + `scan_target`) | **1.95 ms** (`0.195 ms/file`) |
-| **100개 Java 파일** | **17.55 ms** (`0.175 ms/file`) |
-| **500개 Java 파일** | **89.74 ms** (`0.179 ms/file`) |
-| **`PostToolUse` 훅 (인프로세스)** | **p50 0.269 ms** / p95 0.368 ms |
-| **CLI 서브프로세스 E2E (`mjg hook --format claude`)** | **중앙값 31.0 ms** |
-| **검출 정확도 (Java 21 + Boot 3.3)** | **11/11 규칙 전부 검출**, 모던 코드·주석 오탐 0건 |
-| **`SKILL.md` 컨텍스트 크기** | **4.1 KB** |
+| 벤치마크 항목 | 조건 / 규모 | 실측 결과 |
+| :--- | :--- | :--- |
+| **소형 프로젝트 스캔** (`detect` + `scan_target`) | 10개 Java 파일 (65건 검출) | **3.10 ms** (`0.310 ms/file`) |
+| **중형 프로젝트 스캔** | 100개 Java 파일 (650건 검출) | **22.84 ms** (`0.228 ms/file`) |
+| **대형 프로젝트 스캔** | 500개 Java 파일 (3,250건 검출) | **105.24 ms** (`0.210 ms/file`) |
+| **모노레포 규모 스캔** | 1,000개 Java 파일 (6,500건 검출) | **183.40 ms** (`0.183 ms/file`) |
+| **빌드 파일 버전 감지** | `pom.xml` / `build.gradle.kts` / `.java-version` | **0.059 ms** / **0.043 ms** / **0.045 ms** |
+| **`PostToolUse` 훅 (인프로세스)** | 단일 `.java` 파일 (50회 반복) | **p50 0.257 ms** · p95 0.317 ms · max 0.373 ms |
+| **CLI 서브프로세스 E2E (`mjg hook`)** | 실제 프로세스 실행 (10회) | **중앙값 31.0 ms** (30.5–86.3 ms) |
+| **검출 정확도** | Java 21 + Boot 3.3.4 | **11/11 규칙 전부 검출**, 모던 코드·주석 오탐 0건 |
 
 ---
 

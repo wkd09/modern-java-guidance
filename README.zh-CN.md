@@ -171,17 +171,33 @@ flowchart LR
 
 ## 性能基准测试
 
+### 1. 与现有 Java / Spring Boot Agent Skill 对比
+
+| 对比维度 | **`modern-java-guidance` (`mjg`)** | **`github/awesome-copilot`**<br>(`java-springboot` + `spring-security`) | **`Amplicode/spring-skills`**<br>(`spring-security-configuration`) | **`Santoshrt999/Java-Claude-Skills`**<br>(`java-modernization-review`) |
+| :--- | :--- | :--- | :--- | :--- |
+| **初始 `SKILL.md` 体积** | **4,157 bytes**（最轻量） | 9,737 bytes (4,433 + 5,304) | 17,344 bytes (4.2×) | 20,103 bytes (4.8×) |
+| **可执行 CLI 扫描器** | ✅ `mjg check`（零 LLM Token） | ❌ 仅 Markdown 文档 | ❌ 无 | ❌ 仅 Markdown 文档 |
+| **构建文件版本自动检测** | ✅ `mjg detect` (`pom.xml` / Gradle) | ⚠️ 需 Agent 手动读取 | ⚠️ 依赖 IntelliJ MCP | ❌ 无 |
+| **`PostToolUse` 自动拦截 Hook** | ✅ Antigravity & Claude Code | ❌ 无 | ❌ 无 | ❌ 无 |
+| **外部 / IDE 依赖** | **零依赖**（仅 Python 标准库） | 无 | ❌ 需 IntelliJ Amplicode 插件与 MCP | 无 |
+| **Java 21+ & Boot 3+ 覆盖** | ✅ 全部覆盖 | ✅ Boot 3/4 & Security 6/7 | ✅ Spring 生态 | ⚠️ 仅 Java 8→21（无 Boot 规则） |
+
+> **真实项目实测**：在 `Santoshrt999/Java-Claude-Skills/examples` 上运行 `mjg`，可自动从 `pom.xml` 识别 Java 21，并在毫秒级内检出 `TradeProcessor.java:15` 中的 `Executors.newFixedThreadPool(10)`（`[JAVA-010]`）。
+
+### 2. `mjg` 吞吐量、延迟与准确率实测
+
 使用 `python3 scripts/benchmark.py` 实测（Apple Silicon，仅使用 Python 标准库）：
 
-| 测试项 | 实测结果 |
-| :--- | :--- |
-| **10 个 Java 文件**（`detect` + `scan_target`） | **1.95 ms**（`0.195 ms/file`） |
-| **100 个 Java 文件** | **17.55 ms**（`0.175 ms/file`） |
-| **500 个 Java 文件** | **89.74 ms**（`0.179 ms/file`） |
-| **`PostToolUse` Hook（进程内）** | **p50 0.269 ms** / p95 0.368 ms |
-| **CLI 子进程端到端延迟（`mjg hook --format claude`）** | **中位数 31.0 ms** |
-| **检测准确率（Java 21 + Boot 3.3）** | **11/11 规则全部检出**，现代代码与注释零误报 |
-| **`SKILL.md` 上下文体积** | **4.1 KB** |
+| 测试项 | 规模 / 条件 | 实测结果 |
+| :--- | :--- | :--- |
+| **小型项目扫描**（`detect` + `scan_target`） | 10 个 Java 文件（检出 65 处） | **3.10 ms**（`0.310 ms/file`） |
+| **中型项目扫描** | 100 个 Java 文件（检出 650 处） | **22.84 ms**（`0.228 ms/file`） |
+| **大型项目扫描** | 500 个 Java 文件（检出 3,250 处） | **105.24 ms**（`0.210 ms/file`） |
+| **单体大仓扫描** | 1,000 个 Java 文件（检出 6,500 处） | **183.40 ms**（`0.183 ms/file`） |
+| **构建文件解析耗时** | `pom.xml` / `build.gradle.kts` / `.java-version` | **0.059 ms** / **0.043 ms** / **0.045 ms** |
+| **`PostToolUse` Hook（进程内）** | 单个 `.java` 文件（50 次） | **p50 0.257 ms** · p95 0.317 ms · max 0.373 ms |
+| **CLI 子进程端到端延迟（`mjg hook`）** | 完整进程启动（10 次） | **中位数 31.0 ms**（30.5–86.3 ms） |
+| **检测准确率** | Java 21 + Boot 3.3.4 | **11/11 规则全部检出**，现代代码与注释零误报 |
 
 ---
 

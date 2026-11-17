@@ -237,17 +237,33 @@ Rules activate **only** when the detected project meets the minimum Java and Spr
 
 ## Benchmarks
 
+### 1. Comparison with Existing Java & Spring Boot Skills
+
+| Feature / Metric | **`modern-java-guidance` (`mjg`)** | **`github/awesome-copilot`**<br>(`java-springboot` + `spring-security`) | **`Amplicode/spring-skills`**<br>(`spring-security-configuration`) | **`Santoshrt999/Java-Claude-Skills`**<br>(`java-modernization-review`) |
+| :--- | :--- | :--- | :--- | :--- |
+| **Initial `SKILL.md` Size** | **4,157 bytes** (lightest) | 9,737 bytes (4,433 + 5,304) | 17,344 bytes (4.2×) | 20,103 bytes (4.8×) |
+| **Executable CLI Scanner** | ✅ `mjg check` (0 LLM tokens) | ❌ Markdown only | ❌ None | ❌ Markdown only |
+| **Auto Version Detection** | ✅ `mjg detect` (`pom.xml` / Gradle) | ⚠️ Manual agent read | ⚠️ Requires IntelliJ MCP | ❌ None |
+| **`PostToolUse` Auto-Block Hook** | ✅ Antigravity & Claude Code | ❌ None | ❌ None | ❌ None |
+| **External / IDE Dependencies** | **Zero** (Python stdlib only) | None | ❌ IntelliJ Amplicode plugin & MCP | None |
+| **Java 21+ & Spring Boot 3+ Rules** | ✅ Both covered | ✅ Boot 3/4 & Security 6/7 | ✅ Spring ecosystem | ⚠️ Java 8→21 only (no Boot rules) |
+
+> **Real-world sanity check**: Running `mjg` against `Santoshrt999/Java-Claude-Skills/examples` automatically detects Java 21 from `pom.xml` and flags `TradeProcessor.java:15` (`Executors.newFixedThreadPool(10)` → `[JAVA-010]`) in milliseconds.
+
+### 2. `mjg` Throughput, Latency & Accuracy
+
 Measured with `python3 scripts/benchmark.py` (Apple Silicon, Python standard library only):
 
-| Metric | Result |
-| :--- | :--- |
-| **10 Java files** (`detect` + `scan_target`) | **1.95 ms** (`0.195 ms/file`) |
-| **100 Java files** | **17.55 ms** (`0.175 ms/file`) |
-| **500 Java files** | **89.74 ms** (`0.179 ms/file`) |
-| **PostToolUse Hook (in-process)** | **p50 0.269 ms** / p95 0.368 ms |
-| **CLI Subprocess E2E (`mjg hook --format claude`)** | **31.0 ms median** |
-| **Detection Accuracy (Java 21 + Boot 3.3)** | **11/11 rules detected**, 0 false positives on modern code or comments |
-| **`SKILL.md` context footprint** | **4.1 KB** (lightweight progressive disclosure) |
+| Benchmark | Workload / Condition | Result |
+| :--- | :--- | :--- |
+| **Small repo scan** (`detect` + `scan_target`) | 10 Java files (65 findings) | **3.10 ms** (`0.310 ms/file`) |
+| **Medium repo scan** | 100 Java files (650 findings) | **22.84 ms** (`0.228 ms/file`) |
+| **Large repo scan** | 500 Java files (3,250 findings) | **105.24 ms** (`0.210 ms/file`) |
+| **Monorepo-scale scan** | 1,000 Java files (6,500 findings) | **183.40 ms** (`0.183 ms/file`) |
+| **Build file detection** | `pom.xml` / `build.gradle.kts` / `.java-version` | **0.059 ms** / **0.043 ms** / **0.045 ms** |
+| **`PostToolUse` hook (in-process)** | Single `.java` file (50 runs) | **p50 0.257 ms** · p95 0.317 ms · max 0.373 ms |
+| **CLI subprocess E2E (`mjg hook`)** | Full process spawn (10 runs) | **31.0 ms median** (30.5–86.3 ms) |
+| **Detection accuracy** | Java 21 + Boot 3.3.4 | **11/11 rules detected**, 0 false positives on modern code or comments |
 
 ---
 
