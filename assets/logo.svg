@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="modern-java-guidance logo">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E293B"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6DB33F"/>
+      <stop offset="100%" stop-color="#22C55E"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded shield/app badge -->
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="url(#bgGrad)" stroke="#334155" stroke-width="2.5"/>
+
+  <!-- Subtle Java-orange & Spring-green top bar dots -->
+  <circle cx="28" cy="26" r="3.5" fill="#F89820"/>
+  <circle cx="40" cy="26" r="3.5" fill="#6DB33F"/>
+  <circle cx="52" cy="26" r="3.5" fill="#38BDF8"/>
+
+  <!-- Modern shield outline -->
+  <path d="M64 36 L94 46 V68 C94 86 80 99 64 105 C48 99 34 86 34 68 V46 Z"
+        fill="#0B1220" stroke="url(#accentGrad)" stroke-width="4" stroke-linejoin="round"/>
+
+  <!-- Terminal prompt >_ + check accent inside shield -->
+  <path d="M47 62 L57 70 L47 78" fill="none" stroke="#F89820" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M63 77 L71 84 L84 65" fill="none" stroke="#6DB33F" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="./assets/logo.svg" width="88" height="88" alt="modern-java-guidance logo" />
+
 # modern-java-guidance (`mjg`)
 
 **Modern Java & Spring Boot guidance for AI coding agents — stop Java 8 & Boot 2.x patterns, enforce Java 21+ & Spring Boot 3.x+ best practices.**
