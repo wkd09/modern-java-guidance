@@ -2,9 +2,9 @@
 
 <img src="./assets/logo.svg" width="88" height="88" alt="modern-java-guidance logo" />
 
-# Modern Java Guidance (`mjg`)
+# Modern Java Guidance
 
-**Modern Java Guidance** 是一套将 **Java 17/21/25+** 与 **Spring Boot 3.x+** 最佳实践直接嵌入 AI 编程助手的版本感知 CLI 扫描器、`PostToolUse` Hook 与 Agent Skill。
+**Modern Java Guidance** 是一套将 **Java 17/21/25+** 与 **Spring Boot 3.x+** 最佳实践直接嵌入 AI 编程助手的 Agent Skill、CLI 扫描器与 `PostToolUse` Hook，引导编程助手告别 Java 8 与 Spring Boot 2.x 遗留写法，转向现代生产级实现。
 
 [![CI](https://github.com/wkd09/modern-java-guidance/actions/workflows/ci.yml/badge.svg)](https://github.com/wkd09/modern-java-guidance/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
@@ -13,160 +13,162 @@
 
 [English](./README.md) | [한국어](./README.ko.md) | [简体中文](./README.zh-CN.md)
 
+[Skill 指南](./skills/modern-java-guidance/SKILL.md) · [A/B 评估套件](./scripts/eval_suite.py) · [性能基准](./scripts/benchmark.py) · [提交 Issue](https://github.com/wkd09/modern-java-guidance/issues)
+
 </div>
 
 ---
 
-## 为什么需要 Modern Java Guidance？
+## Why?（为什么需要它？）
 
-由于 LLM 训练数据中充斥着大量 **Java 8 与 Spring Boot 2.x** 时期的遗留代码，即使在全新的 Java 21 + Spring Boot 3.x 项目中，未经引导的模型也经常输出已被移除的 `javax.*` 导入、`WebSecurityConfigurerAdapter`、`RestTemplate` 或 `Executors.newFixedThreadPool()`。
+LLM 训练数据中充斥着大量 **Java 8 与 Spring Boot 2.x** 时期的企业遗留代码，因此即便在全新的 Java 21 + Spring Boot 3.x 项目中，AI 编程助手也经常默认输出已被移除的 `javax.*` 导入、`WebSecurityConfigurerAdapter`、`RestTemplate` 或阻塞式 `Executors.newFixedThreadPool()`。
 
-即使模型知道新 API 的存在，单纯的静态 Markdown 提示词也无法阻止长对话中的习惯性回退。Modern Java Guidance 通过可执行 CLI 与 `PostToolUse` 护栏弥合了这一差距：
+即使模型知道现代 API 的存在，单纯的静态 Markdown 提示词也无法阻止长对话中的回退。**Modern Java Guidance** 通过离线 CLI 与 `PostToolUse` 护栏弥合了这一差距：
 
-* **版本感知自动检测（`mjg detect`）**：解析 `pom.xml`、`build.gradle(.kts)`、`gradle/libs.versions.toml` 与 `.java-version`，确保 Java 8 / Boot 2.x 老项目不会出现误报。
-* **按需检索模式指南（`mjg search` / `mjg retrieve`）**：将 `SKILL.md` 控制在仅 **4.1 KB**，需要时再按 ID 或关键字精确调取 Before/After 示例。
-* **确定性编辑后护栏（`mjg hook`）**：每次修改 `.java` 文件后仅需 **~31 ms**（零 LLM Token）自动扫描并拦截过时写法。
+* **现代 Java & Spring Boot API 引导**：准确引导模型使用 `SecurityFilterChain` Lambda DSL、`RestClient`、`@HttpExchange`、`record`、`sealed interface`、`SequencedCollection` 与虚拟线程。
+* **版本感知安全门控**：自动解析 `pom.xml`、`build.gradle(.kts)`、`libs.versions.toml` 与 `.java-version`，确保 Java 8 / Boot 2.x 老项目不会触发误报。
+* **确定性编辑后护栏**：每次修改 `.java` 文件后仅需 **~31 ms**（零 LLM Token）即可完成扫描并拦截过时写法。
 
 ---
 
-## 快速开始
-
-一条命令安装 `mjg`（需要 Python 3.11+，零第三方依赖）：
+## Quickstart
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/wkd09/modern-java-guidance/main/install.sh | bash
-```
-
-在你的 Java / Spring Boot 项目中配置 Skill 与 `PostToolUse` Hook：
-
-```bash
 mjg setup --target all --dir /path/to/your/spring-boot-project
 ```
+
+该命令会安装 `mjg`（Python 3.11+，零第三方依赖）并自动配置 Agent Skill 与 `PostToolUse` Hook。其他安装方式见下文 [Alternative Installation Methods](#alternative-installation-methods)。
 
 ### 免安装直接体验（`uvx`）
 
 ```bash
-# 自动识别 pom.xml / build.gradle(.kts) 版本并扫描项目
-uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
-
 # 按关键字搜索现代写法指南
 uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg search "security"
 
-# 按 ID 获取详细前后对比示例
+# 按 ID 获取详细 Before/After 指南
 uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg retrieve BOOT-002
+
+# 扫描项目中的过时 Java / Spring Boot 写法
+uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 ```
 
 ---
 
-## 与编程 Agent 集成
+## What's Included?
 
-* **Vercel Agent Skills（Claude Code、Cursor、Copilot、Codex、Antigravity）**：
-  ```bash
-  npx skills add wkd09/modern-java-guidance
-  ```
-* **Antigravity（`PostToolUse` Hook + 全局 Skill）**：
-  ```bash
-  mjg setup --target antigravity --dir .
-  ```
-* **Claude Code（返回 `"decision": "block"` 的 `PostToolUse` Hook）**：
-  ```bash
-  mjg setup --target claude --dir .
-  ```
+涵盖现代 **Java 17 / 21 / 25+** 与 **Spring Boot 3.x+** 核心实践。`SKILL.md` 仅 **4.1 KB**，详细的前后对比示例通过 `mjg search` 与 `mjg retrieve` 按需加载。
+
+### Core Disciplines
+
+* **🔒 Spring Security 6**：`SecurityFilterChain` `@Bean`、Lambda DSL、`authorizeHttpRequests()`、`requestMatchers()` 与 `AbstractHttpConfigurer::disable`。
+* **🌐 现代 HTTP 客户端**：使用流式 `RestClient` 与声明式 `@HttpExchange`（Spring Boot 3.2+）替代 `RestTemplate`。
+* **⚡ 虚拟线程与并发**：I/O 密集型任务使用 `Executors.newVirtualThreadPerTaskExecutor()`（附带 CPU 密集型有界池注意事项）。
+* **🧩 现代 Java 语法**：`record`、`sealed interface`、`switch` 模式匹配、`SequencedCollection`（`getFirst()`、`getLast()`）、`java.time`、`List.of`/`Map.of` 与 `String.formatted()`。
+* **🏛️ Jakarta EE 10 与依赖注入**：`jakarta.*` 迁移、构造函数注入替代 `@Autowired` 字段注入，以及 RFC 9457 `ProblemDetail`。
+* **🛡️ 旧版本兼容性保护**：当 `pom.xml` 或 `build.gradle(.kts)` 面向 Java 8/11 或 Boot 2.x 时，自动关闭 Java 21 与 Boot 3+ 规则。
+
+### 完整规则与指南清单（13 篇指南 & 11 条可执行扫描规则）
 
 <details>
-<summary>生成的 Hook 配置示例（<code>.claude/settings.json</code> / <code>.agents/hooks.json</code>）</summary>
+<summary>查看所有指南与版本门控规则</summary>
 
-**Claude Code (`.claude/settings.json`)**
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit|MultiEdit",
-        "hooks": [{ "type": "command", "command": "mjg hook --format claude" }]
-      }
-    ]
-  }
-}
-```
+#### Java 17 / 21 / 25+ (`JAVA-*`)
+* [`JAVA-001`](./src/modern_java_guidance/guides.py) *(Java 8+ / 扫描 16+)*：`java.util.Date` & `SimpleDateFormat` → `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`)。
+* [`JAVA-002`](./src/modern_java_guidance/guides.py) *(Java 9+ / 扫描 16+)*：`Collections.unmodifiableList(Arrays.asList(...))` → `List.of` / `Set.of` / `Map.of`。
+* [`JAVA-003`](./src/modern_java_guidance/guides.py) *(Java 15+ / 扫描 16+)*：`String.format(...)` → `"..." .formatted(...)`。
+* [`JAVA-010`](./src/modern_java_guidance/guides.py) *(Java 21+)*：阻塞 I/O 使用 `Executors.newVirtualThreadPerTaskExecutor()`。
+* [`JAVA-011`](./src/modern_java_guidance/guides.py) *(Java 21+)*：`list.get(list.size() - 1)` → `SequencedCollection.getFirst()` / `getLast()`。
+* [`JAVA-012`](./src/modern_java_guidance/guides.py) *(Java 21+, 指南)*：`record`、`sealed interface` 与 `switch` 模式匹配。
 
-**Antigravity (`.agents/hooks.json`)**
-```json
-{
-  "modern-java-guidance": {
-    "PostToolUse": [
-      {
-        "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
-        "hooks": [{ "type": "command", "command": "mjg hook --format antigravity", "timeout": 10 }]
-      }
-    ]
-  }
-}
-```
+#### Spring Boot 3.x+ & Security 6 (`BOOT-*`)
+* [`BOOT-001`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*：`javax.{persistence,validation,servlet,annotation,transaction}.*` → `jakarta.*`。
+* [`BOOT-002`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*：`WebSecurityConfigurerAdapter` → `@Bean SecurityFilterChain`。
+* [`BOOT-003`](./src/modern_java_guidance/guides.py) *(Boot 3.2+)*：`RestTemplate` → `RestClient` 或 `@HttpExchange`。
+* [`BOOT-004`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*：`@Autowired` 字段注入 → 构造函数注入（`private final`）。
+* [`BOOT-005`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*：`.antMatchers()` / `.mvcMatchers()` / `.authorizeRequests()` → `.authorizeHttpRequests(a -> a.requestMatchers(...))`。
+* [`BOOT-006`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*：`.csrf().disable()` → `.csrf(AbstractHttpConfigurer::disable)`。
+* [`BOOT-007`](./src/modern_java_guidance/guides.py) *(Boot 3.0+, 指南)*：在 `@RestControllerAdvice` 中返回 RFC 9457 `ProblemDetail`。
 
 </details>
 
----
+### Safe Adoption of Modern Features
 
-## 包含内容
-
-* **Java 17 / 21 / 25+ 语言与标准库**：`record`、`sealed interface`、`switch` 模式匹配、`SequencedCollection`（`getFirst()`、`getLast()`）、虚拟线程（`Executors.newVirtualThreadPerTaskExecutor()`）、`java.time`、不可变集合工厂（`List.of`、`Map.of`）与 `String.formatted()`。
-* **Spring Boot 3.x+ & Spring Security 6**：`jakarta.*`（Jakarta EE 10）迁移、`SecurityFilterChain` Lambda DSL（`authorizeHttpRequests`、`requestMatchers`、`AbstractHttpConfigurer::disable`）、`RestClient` & `@HttpExchange`（Boot 3.2+）、构造函数注入以及 RFC 9457 `ProblemDetail`。
-* **旧版本兼容性保护**：当 `pom.xml` 或 `build.gradle(.kts)` 目标为 Java 8/11 或 Boot 2.x 时，自动跳过 Java 21 与 Boot 3+ 规则。
-
-<details>
-<summary>完整版本门控规则目录（11 条可执行扫描规则 + 13 篇按需指南）</summary>
-
-| 规则 ID | 级别 | 生效版本 | 检测的过时写法 | 推荐现代写法 |
-| :--- | :--- | :--- | :--- | :--- |
-| `JAVA-001` | `warning` | Java 16+ | `new Date()`, `SimpleDateFormat` | `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`) |
-| `JAVA-002` | `warning` | Java 16+ | `Collections.unmodifiableList(Arrays.asList(...))` | `List.of(...)`, `Set.of(...)`, `Map.of(...)` |
-| `JAVA-003` | `info` | Java 16+ | `String.format(...)` | `"..." .formatted(...)` |
-| `JAVA-010` | `warning` | Java 21+ | `Executors.newFixedThreadPool` / `newCachedThreadPool` | `Executors.newVirtualThreadPerTaskExecutor()`（I/O 密集型） |
-| `JAVA-011` | `warning` | Java 21+ | `list.get(list.size() - 1)` | `SequencedCollection.getLast()` |
-| `BOOT-001` | `error` | Boot 3.0+ | `import javax.{persistence,validation,servlet,...}.*` | `import jakarta.*` |
-| `BOOT-002` | `error` | Boot 3.0+ | `extends WebSecurityConfigurerAdapter` | `@Bean SecurityFilterChain` |
-| `BOOT-003` | `warning` | Boot 3.2+ | `RestTemplate` / `RestTemplateBuilder` | `RestClient` / `@HttpExchange` |
-| `BOOT-004` | `warning` | Boot 3.0+ | `@Autowired` 字段注入 | 构造函数注入 |
-| `BOOT-005` | `error` | Boot 3.0+ | `.antMatchers()` / `.mvcMatchers()` / `.authorizeRequests()` | `.authorizeHttpRequests(a -> a.requestMatchers(...))` |
-| `BOOT-006` | `error` | Boot 3.0+ | `.csrf().disable()` | `.csrf(AbstractHttpConfigurer::disable)` |
-
-</details>
+* **版本门控执行**：仅当检测到的 Java/Spring Boot 版本满足规则最低要求（`min_java`、`min_boot`）时才激活对应规则。
+* **注释感知扫描**：扫描前自动剥离 `//` 与 `/* ... */` 注释，避免注释文字引发误报。
+* **注意事项（Caveats）**：每次通过 `mjg retrieve <ID>` 检索指南时，均附带实战注意事项（例如 JPA `@Entity` 不应使用 `record`）。
 
 ---
 
-## 评估与性能基准
+## How It Works
 
-### 1. 基于断言的 A/B 评估（`scripts/eval_suite.py`）
+1. **Activation**：编程助手在 Java/Spring Boot 任务中激活 `modern-java-guidance` Skill（`4.1 KB`）。
+2. **Version Detection**：运行 `mjg detect .` 解析 `pom.xml`、`build.gradle(.kts)`、`gradle/libs.versions.toml` 或 `.java-version`。
+3. **On-Demand Guide Fetch**：通过 `mjg search "<topic>"` 与 `mjg retrieve <ID>` 按需拉取精确的前后对比代码与注意事项。
+4. **Post-Edit Hook (`PostToolUse`)**：每次编辑 `.java` 后由 `mjg hook` 在 ~31 ms 内自动扫描并拦截或告警。
 
-参考 `GoogleChrome/modern-web-guidance` 的断言评分方法，`scripts/eval_suite.py` 在**无引导遗留基线（Unguided）**与**引导 + `mjg` Hook（Guided）**两种条件下对 **6 个典型 Java / Spring Boot 任务**进行对比评估：
+> [!TIP]
+> `mjg` CLI 仅依赖 Python 3.11+ 标准库，**100% 离线、本地运行**，无需网络请求、API Key 或第三方供应链依赖。
 
-| 指标 | 无引导遗留基线 | 引导 + `mjg` Hook | 提升幅度 (Uplift) |
-| :--- | :--- | :--- | :--- |
-| **整体任务通过率 (Pass Rate)** | **1 / 6 (16.7%)** | **6 / 6 (100.0%)** | **+83.3 个百分点** |
+---
+
+## Alternative Installation Methods
+
+* **Vercel Skills CLI (`npx skills`)**：`npx skills add wkd09/modern-java-guidance`
+* **GitHub CLI**：`gh skill install wkd09/modern-java-guidance`
+* **Google Antigravity**：`mjg setup --target antigravity --dir .`
+* **Claude Code**：`mjg setup --target claude --dir .`
+* **uv / pip（仅 CLI）**：
+  ```bash
+  uv tool install git+https://github.com/wkd09/modern-java-guidance.git
+  # 或: pip install git+https://github.com/wkd09/modern-java-guidance.git
+  ```
+
+---
+
+## Evals to prove this works well
+
+参照 `GoogleChrome/modern-web-guidance` 的闭环验证流程，我们在 CI 中对每次提交自动运行基于断言的评估套件（[`scripts/eval_suite.py`](./scripts/eval_suite.py)）与性能基准（[`scripts/benchmark.py`](./scripts/benchmark.py)）：
+
+```text
+[ 专家编写的规则与指南 ]
+        │
+        ▼
+[ 目标任务定义 ]       ──> 6 个 Java / Spring Boot 任务（无引导遗留基线 vs. 引导现代实现）
+        │
+        ▼
+[ 校准与断言评分 ]     ──> 验证必备现代写法、禁用过时写法以及 `mjg check` 零告警
+        │
+        ▼
+[ A/B 评估与性能基准 ] ──> 统计通过率提升、零误报率与单文件延迟
+```
+
+### Eval & benchmark results snapshot
+
+#### 1. A/B 任务通过率（`python3 scripts/eval_suite.py`）
 
 | 任务 | 目标环境 | 无引导基线 | 引导 + `mjg` Hook |
 | :--- | :--- | :--- | :--- |
-| `EVAL-01` Spring Security 6 配置 | Java 21, Boot 3.3.4 | FAIL（检出 3 处 `mjg` 告警） | **PASS**（0 告警） |
-| `EVAL-02` 同步 HTTP 客户端 | Java 21, Boot 3.3.4 | FAIL（检出 3 处 `mjg` 告警） | **PASS**（0 告警） |
-| `EVAL-03` Jakarta EE 持久层与校验 | Java 21, Boot 3.3.4 | FAIL（检出 2 处 `mjg` 告警） | **PASS**（0 告警） |
-| `EVAL-04` 阻塞 I/O 并发 | Java 21, Boot 3.3.4 | FAIL（检出 1 处 `mjg` 告警） | **PASS**（0 告警） |
-| `EVAL-05` SequencedCollection & `java.time` | Java 21, Boot 3.3.4 | FAIL（检出 2 处 `mjg` 告警） | **PASS**（0 告警） |
+| `EVAL-01` Spring Security 6 配置 | Java 21, Boot 3.3.4 | FAIL（检出 3 处） | **PASS**（0 告警） |
+| `EVAL-02` 同步 HTTP 客户端 | Java 21, Boot 3.3.4 | FAIL（检出 3 处） | **PASS**（0 告警） |
+| `EVAL-03` Jakarta EE 持久层与校验 | Java 21, Boot 3.3.4 | FAIL（检出 2 处） | **PASS**（0 告警） |
+| `EVAL-04` 阻塞 I/O 并发 | Java 21, Boot 3.3.4 | FAIL（检出 1 处） | **PASS**（0 告警） |
+| `EVAL-05` SequencedCollection & `java.time` | Java 21, Boot 3.3.4 | FAIL（检出 2 处） | **PASS**（0 告警） |
 | `EVAL-06` 旧版本兼容性保护 | Java 8, Boot 2.7.18 | PASS（零误报） | **PASS**（零误报） |
+| **整体通过率 (Pass Rate)** | **6 个任务** | **16.7% (1/6)** | **100.0% (6/6, +83.3 pp)** |
 
-### 2. 与现有 Java / Spring Boot Skill 对比
+#### 2. 与现有 Java / Spring Boot Skill 对比
 
-| 对比维度 | **`modern-java-guidance` (`mjg`)** | **`github/awesome-copilot`**<br>(`java-springboot` + `spring-security`) | **`Amplicode/spring-skills`**<br>(`spring-security-configuration`) | **`Santoshrt999/Java-Claude-Skills`**<br>(`java-modernization-review`) |
-| :--- | :--- | :--- | :--- | :--- |
-| **初始 `SKILL.md` 体积** | **4,157 bytes** | 9,737 bytes (4,433 + 5,304) | 17,344 bytes (4.2×) | 20,103 bytes (4.8×) |
-| **可执行 CLI 扫描器** | ✅ `mjg check`（零 LLM Token） | ❌ 仅 Markdown | ❌ 无 | ❌ 仅 Markdown |
-| **版本自动检测** | ✅ `mjg detect` (`pom.xml` / Gradle) | ⚠️ 需手动读取 | ⚠️ 依赖 IntelliJ MCP | ❌ 无 |
-| **`PostToolUse` 自动拦截** | ✅ Antigravity & Claude Code | ❌ 无 | ❌ 无 | ❌ 无 |
-| **外部 / IDE 依赖** | **零依赖**（仅 Python 标准库） | 无 | ❌ 需 IntelliJ Amplicode MCP | 无 |
+| Skill / 仓库 | 初始 `SKILL.md` 体积 | 可执行 CLI | 版本自动检测 | `PostToolUse` Hook | 无 IDE/MCP 依赖 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`modern-java-guidance` (`mjg`)** | **4,157 bytes** | ✅ `mjg check` / `search` / `retrieve` | ✅ `pom.xml` / Gradle | ✅ Antigravity & Claude | ✅ 仅 Python 标准库 |
+| **`github/awesome-copilot`** (`java-springboot` + `spring-security`) | 9,737 bytes | ❌ 仅 Markdown | ⚠️ 手动读取 | ❌ 无 | ✅ |
+| **`Amplicode/spring-skills`** (`spring-security-configuration`) | 17,344 bytes | ❌ 无 | ⚠️ 依赖 IntelliJ MCP | ❌ 无 | ❌ 依赖 IntelliJ MCP |
+| **`Santoshrt999/Java-Claude-Skills`** (`java-modernization-review`) | 20,103 bytes | ❌ 仅 Markdown | ❌ 无 | ❌ 无 | ✅ |
 
-### 3. 吞吐量与延迟（`scripts/benchmark.py`）
+> 在 `Santoshrt999/Java-Claude-Skills/examples` 实测：`mjg` 自动从 `pom.xml` 检测到 Java 21，并立即检出 `TradeProcessor.java:15` 的 `Executors.newFixedThreadPool(10)`（`[JAVA-010]`）。
 
-Apple Silicon 实测（仅使用 Python 标准库）：
+#### 3. 吞吐量与延迟（`python3 scripts/benchmark.py`，Apple Silicon）
 
 | 测试项 | 规模 / 条件 | 实测结果 |
 | :--- | :--- | :--- |
@@ -177,6 +179,8 @@ Apple Silicon 实测（仅使用 Python 标准库）：
 
 ---
 
-## 开源协议
+## Contributors & License
 
-[MIT](./LICENSE)
+欢迎通过 [GitHub Issues](https://github.com/wkd09/modern-java-guidance/issues) 或 Pull Request 反馈问题与新增规则。
+
+基于 [MIT License](./LICENSE) 开源。

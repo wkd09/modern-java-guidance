@@ -2,9 +2,9 @@
 
 <img src="./assets/logo.svg" width="88" height="88" alt="modern-java-guidance logo" />
 
-# Modern Java Guidance (`mjg`)
+# Modern Java Guidance
 
-**Modern Java Guidance** is an Agent Skill, version detector, and `PostToolUse` hook that embeds **Java 17/21/25+** and **Spring Boot 3.x+** best practices directly into your AI coding agents.
+**Modern Java Guidance** is an Agent Skill, CLI scanner, and `PostToolUse` hook that embeds **Java 17/21/25+** and **Spring Boot 3.x+** best practices directly into your coding agents. It steers your coding agents away from Java 8 & Spring Boot 2.x legacy patterns, and toward modern, production-ready idioms.
 
 [![CI](https://github.com/wkd09/modern-java-guidance/actions/workflows/ci.yml/badge.svg)](https://github.com/wkd09/modern-java-guidance/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
@@ -13,62 +13,116 @@
 
 [English](./README.md) | [한국어](./README.ko.md) | [简体中文](./README.zh-CN.md)
 
+[Skill Guide](./skills/modern-java-guidance/SKILL.md) · [Eval Suite](./scripts/eval_suite.py) · [Benchmarks](./scripts/benchmark.py) · [Report an Issue](https://github.com/wkd09/modern-java-guidance/issues)
+
 </div>
-
----
-
-## Why Modern Java Guidance?
-
-Coding agents often default to **Java 8 and Spring Boot 2.x** patterns because LLM training datasets contain vast amounts of legacy enterprise code. Even inside a brand-new Java 21 + Spring Boot 3.x project, unguided models routinely emit removed `javax.*` imports, `WebSecurityConfigurerAdapter`, `RestTemplate`, or `Executors.newFixedThreadPool()`.
-
-Even when a model knows a modern API exists, passive markdown skills alone cannot stop regressions mid-session. Modern Java Guidance bridges this gap with an executable CLI and `PostToolUse` guardrail:
-
-* **Version-Aware Standard & Boot Detection (`mjg detect`)**: Parses `pom.xml`, `build.gradle(.kts)`, `gradle/libs.versions.toml`, and `.java-version` so legacy Java 8 / Boot 2.x repos never receive false-positive warnings.
-* **On-Demand Knowledge Lookup (`mjg search` / `mjg retrieve`)**: Keeps `SKILL.md` at just **4.1 KB** while letting agents fetch exact Before/After patterns on demand.
-* **Deterministic Post-Edit Guardrail (`mjg hook`)**: Automatically scans every edited `.java` file in **~31 ms** (zero LLM tokens) and blocks or warns on legacy regressions.
 
 ---
 
 ## Quickstart
 
-Install `mjg` in one command (requires Python 3.11+, zero third-party dependencies):
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/wkd09/modern-java-guidance/main/install.sh | bash
-```
-
-Then configure your Java/Spring Boot project (installs the skill + `PostToolUse` hooks):
-
-```bash
 mjg setup --target all --dir /path/to/your/spring-boot-project
 ```
 
+This installs `mjg` (zero third-party dependencies, Python 3.11+) and configures the Agent Skill + `PostToolUse` hooks. See [Alternative Installation Methods](#alternative-installation-methods) below.
+
 ### Try it out (without installing)
 
-You can scan a project or search/retrieve guides directly via `uvx`:
-
 ```bash
-# Scan a project respecting its pom.xml / build.gradle(.kts) versions
-uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
-
 # Search for relevant guides
 uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg search "security"
 
-# Retrieve a specific guide by ID
+# Retrieve a guide by ID
 uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg retrieve BOOT-002
+
+# Scan a codebase for legacy Java / Spring Boot patterns
+uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 ```
 
 ---
 
-## Integration with Coding Agents & Tools
+## Why?
 
-Modern Java Guidance integrates across major AI coding workflows:
+Coding agents often default to **Java 8 and Spring Boot 2.x** patterns because LLM training data contains vast amounts of legacy enterprise code. This frequently leads them to generate removed `javax.*` imports, `WebSecurityConfigurerAdapter`, `RestTemplate`, or blocking `Executors.newFixedThreadPool()` inside modern Java 21 + Spring Boot 3.x projects.
 
-* **Vercel's Agent Skills (Claude Code, Cursor, Copilot, Codex, Antigravity)**:
+Even if a model knows a modern API exists, passive markdown skills alone cannot stop regressions mid-session. **Modern Java Guidance** bridges this gap with an offline CLI and `PostToolUse` guardrail, focusing on:
+
+* **Modern Java & Spring Boot APIs**: Steering models toward `SecurityFilterChain` Lambda DSL, `RestClient`, `@HttpExchange`, `record`, `sealed interface`, `SequencedCollection`, and Virtual Threads.
+* **Version-Aware Safety**: Detecting `pom.xml`, `build.gradle(.kts)`, `libs.versions.toml`, and `.java-version` so legacy Java 8 / Boot 2.x projects never receive false-positive warnings.
+* **Deterministic Post-Edit Guardrails**: Scanning every edited `.java` file in **~31 ms** (zero LLM tokens) to catch and block legacy regressions before they land.
+
+---
+
+## What's Included?
+
+We cover modern **Java 17 / 21 / 25+** and **Spring Boot 3.x+** patterns. The skill is designed to be token-efficient: `SKILL.md` is only **4.1 KB**, while detailed Before/After guides are fetched on demand via `mjg search` and `mjg retrieve`.
+
+### Core Disciplines
+
+* **🔒 Spring Security 6**: `SecurityFilterChain` `@Bean`, Lambda DSL, `authorizeHttpRequests()`, `requestMatchers()`, and `AbstractHttpConfigurer::disable`.
+* **🌐 Modern HTTP Clients**: Fluent `RestClient` and declarative `@HttpExchange` interfaces (Spring Boot 3.2+) replacing `RestTemplate`.
+* **⚡ Virtual Threads & Concurrency**: `Executors.newVirtualThreadPerTaskExecutor()` for blocking I/O workloads, with bounded-pool caveats for CPU-bound tasks.
+* **🧩 Modern Java Language**: `record`, `sealed interface`, Pattern Matching for `switch`, `SequencedCollection` (`getFirst()`, `getLast()`), `java.time`, `List.of`/`Map.of`, and `String.formatted()`.
+* **🏛️ Jakarta EE 10 & Clean DI**: `jakarta.*` migration (`persistence`, `validation`, `servlet`), constructor injection over `@Autowired` field injection, and RFC 9457 `ProblemDetail`.
+* **🛡️ Legacy Preservation**: Automatically gates rules by detected `pom.xml` / `build.gradle(.kts)` versions so Java 8/11 and Boot 2.x repos stay untouched.
+
+### The full list (13 guides & 11 active scanner rules)
+
+<details>
+<summary>Browse all guides & version-gated rules</summary>
+
+#### Java 17 / 21 / 25+ (`JAVA-*`)
+* [`JAVA-001`](./src/modern_java_guidance/guides.py) *(Java 8+ / Scan 16+)*: Replace `java.util.Date` & `SimpleDateFormat` with `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`).
+* [`JAVA-002`](./src/modern_java_guidance/guides.py) *(Java 9+ / Scan 16+)*: Replace `Collections.unmodifiableList(Arrays.asList(...))` with `List.of` / `Set.of` / `Map.of`.
+* [`JAVA-003`](./src/modern_java_guidance/guides.py) *(Java 15+ / Scan 16+)*: Use `"..." .formatted(...)` instead of `String.format(...)`.
+* [`JAVA-010`](./src/modern_java_guidance/guides.py) *(Java 21+)*: Use `Executors.newVirtualThreadPerTaskExecutor()` for blocking I/O workloads.
+* [`JAVA-011`](./src/modern_java_guidance/guides.py) *(Java 21+)*: Use `SequencedCollection.getFirst()` / `getLast()` instead of `list.get(list.size() - 1)`.
+* [`JAVA-012`](./src/modern_java_guidance/guides.py) *(Java 21+, guide)*: Use `record`, `sealed interface`, and Pattern Matching for `switch`.
+
+#### Spring Boot 3.x+ & Security 6 (`BOOT-*`)
+* [`BOOT-001`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: Migrate `javax.{persistence,validation,servlet,annotation,transaction}.*` to `jakarta.*`.
+* [`BOOT-002`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: Replace `WebSecurityConfigurerAdapter` with a `@Bean SecurityFilterChain`.
+* [`BOOT-003`](./src/modern_java_guidance/guides.py) *(Boot 3.2+)*: Use `RestClient` or `@HttpExchange` instead of `RestTemplate`.
+* [`BOOT-004`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: Prefer constructor injection (`private final`) over `@Autowired` field injection.
+* [`BOOT-005`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: Replace `.antMatchers()` / `.mvcMatchers()` / `.authorizeRequests()` with `.authorizeHttpRequests(a -> a.requestMatchers(...))`.
+* [`BOOT-006`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: Replace `.csrf().disable()` with `.csrf(AbstractHttpConfigurer::disable)`.
+* [`BOOT-007`](./src/modern_java_guidance/guides.py) *(Boot 3.0+, guide)*: Return RFC 9457 `ProblemDetail` from `@RestControllerAdvice`.
+
+</details>
+
+### Safe Adoption of Modern Features
+
+* **Version-Gated Execution**: Rules activate only when the project's detected Java and Spring Boot versions meet the rule's minimum threshold (`min_java`, `min_boot`).
+* **Comment-Aware Scanning**: Strips `//` and `/* ... */` comments (while preserving string literals) before scanning so commented notes never trigger false positives.
+* **Gotchas & Quirks**: Every guide retrieved via `mjg retrieve <ID>` includes a `## Caveat` section (e.g., do not use `record` for JPA `@Entity`, keep bounded pools for CPU-bound work, check `!isEmpty()` before `getLast()`).
+
+---
+
+## How It Works
+
+1. **Activation**: The coding agent activates the `modern-java-guidance` skill (`4.1 KB`) for Java / Spring Boot tasks.
+2. **Version Detection**: Runs `mjg detect .` to inspect `pom.xml`, `build.gradle(.kts)`, `gradle/libs.versions.toml`, or `.java-version`.
+3. **On-Demand Guide Fetch**: Runs `mjg search "<topic>"` and `mjg retrieve <ID>` to pull exact Before/After code patterns and caveats into context without loading bloated markdown files.
+4. **Post-Edit Hook (`PostToolUse`)**: Runs `mjg hook` automatically after every `.java` edit (~31 ms) and blocks or warns on legacy regressions.
+
+> [!TIP]
+> The CLI works **100% offline, private, and local** using only the Python 3.11+ standard library—no network calls, no API keys, and zero third-party supply-chain dependencies.
+
+---
+
+## Alternative Installation Methods
+
+* **Vercel Skills CLI (`npx skills`)**:
   ```bash
   npx skills add wkd09/modern-java-guidance
   ```
-* **Antigravity (`PostToolUse` hook + global skill)**:
+* **GitHub CLI**:
+  ```bash
+  gh skill install wkd09/modern-java-guidance
+  ```
+* **Google Antigravity (`PostToolUse` hook + global skill)**:
   ```bash
   mjg setup --target antigravity --dir .
   ```
@@ -76,101 +130,57 @@ Modern Java Guidance integrates across major AI coding workflows:
   ```bash
   mjg setup --target claude --dir .
   ```
-
-<details>
-<summary>Generated Hook Configuration (<code>.claude/settings.json</code> / <code>.agents/hooks.json</code>)</summary>
-
-**Claude Code (`.claude/settings.json`)**
-```json
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit|MultiEdit",
-        "hooks": [{ "type": "command", "command": "mjg hook --format claude" }]
-      }
-    ]
-  }
-}
-```
-
-**Antigravity (`.agents/hooks.json`)**
-```json
-{
-  "modern-java-guidance": {
-    "PostToolUse": [
-      {
-        "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
-        "hooks": [{ "type": "command", "command": "mjg hook --format antigravity", "timeout": 10 }]
-      }
-    ]
-  }
-}
-```
-
-</details>
+* **uv / pip (CLI only)**:
+  ```bash
+  uv tool install git+https://github.com/wkd09/modern-java-guidance.git
+  # or: pip install git+https://github.com/wkd09/modern-java-guidance.git
+  ```
 
 ---
 
-## What's Included?
+## Evals to prove this works well
 
-* **Java 17 / 21 / 25+ Language & Stdlib**: `record`, `sealed interface`, Pattern Matching for `switch`, `SequencedCollection` (`getFirst()`, `getLast()`), Virtual Threads (`Executors.newVirtualThreadPerTaskExecutor()`), `java.time` (`Instant`, `DateTimeFormatter`), immutable collection factories (`List.of`, `Map.of`), and `String.formatted()`.
-* **Spring Boot 3.x+ & Spring Security 6**: `jakarta.*` (Jakarta EE 10) migration, `SecurityFilterChain` Lambda DSL (`authorizeHttpRequests`, `requestMatchers`, `AbstractHttpConfigurer::disable`), `RestClient` & `@HttpExchange` (Boot 3.2+), constructor injection, and RFC 9457 `ProblemDetail`.
-* **Legacy Preservation**: Automatically skips Java 21 and Boot 3+ rules when `pom.xml` or `build.gradle(.kts)` targets Java 8/11 or Spring Boot 2.x.
+Modeled after `GoogleChrome/modern-web-guidance`, we maintain an automated assertion-based evaluation suite ([`scripts/eval_suite.py`](./scripts/eval_suite.py)) and throughput benchmark ([`scripts/benchmark.py`](./scripts/benchmark.py)) run in CI on every push:
 
-<details>
-<summary>Full Version-Gated Rule Catalog (11 active scanner rules + 13 on-demand guides)</summary>
+```text
+[ Expert-authored rules & guides ]
+        │
+        ▼
+[ Target task definitions ] ──> 6 Java / Spring Boot tasks (Unguided Legacy vs. Guided Modern)
+        │
+        ▼
+[ Calibration & assertion ] ──> Checks required modern patterns, forbidden legacy patterns, & `mjg check`
+        │
+        ▼
+[ A/B Eval & Benchmark ]    ──> Measures pass-rate uplift, false positives, & per-file latency
+```
 
-| Rule ID | Severity | Version Gate | Legacy Pattern | Modern Replacement |
-| :--- | :--- | :--- | :--- | :--- |
-| `JAVA-001` | `warning` | Java 16+ | `new Date()`, `SimpleDateFormat` | `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`) |
-| `JAVA-002` | `warning` | Java 16+ | `Collections.unmodifiableList(Arrays.asList(...))` | `List.of(...)`, `Set.of(...)`, `Map.of(...)` |
-| `JAVA-003` | `info` | Java 16+ | `String.format(...)` | `"..." .formatted(...)` |
-| `JAVA-010` | `warning` | Java 21+ | `Executors.newFixedThreadPool` / `newCachedThreadPool` | `Executors.newVirtualThreadPerTaskExecutor()` (I/O-bound) |
-| `JAVA-011` | `warning` | Java 21+ | `list.get(list.size() - 1)` | `SequencedCollection.getLast()` |
-| `BOOT-001` | `error` | Boot 3.0+ | `import javax.{persistence,validation,servlet,...}.*` | `import jakarta.*` |
-| `BOOT-002` | `error` | Boot 3.0+ | `extends WebSecurityConfigurerAdapter` | `@Bean SecurityFilterChain` |
-| `BOOT-003` | `warning` | Boot 3.2+ | `RestTemplate` / `RestTemplateBuilder` | `RestClient` / `@HttpExchange` |
-| `BOOT-004` | `warning` | Boot 3.0+ | `@Autowired` field injection | Constructor injection |
-| `BOOT-005` | `error` | Boot 3.0+ | `.antMatchers()` / `.mvcMatchers()` / `.authorizeRequests()` | `.authorizeHttpRequests(a -> a.requestMatchers(...))` |
-| `BOOT-006` | `error` | Boot 3.0+ | `.csrf().disable()` | `.csrf(AbstractHttpConfigurer::disable)` |
+### Eval & benchmark results snapshot
 
-</details>
-
----
-
-## Evaluation & Benchmarks
-
-### 1. Assertion-Based A/B Evaluation (`scripts/eval_suite.py`)
-
-Modeled after `GoogleChrome/modern-web-guidance`'s assertion grading approach, `scripts/eval_suite.py` evaluates **6 representative Java / Spring Boot tasks** under two conditions—**Unguided Legacy Baseline** vs. **Guided + `mjg` Hook**—verifying required modern patterns, forbidden legacy patterns, and zero `mjg` violations:
-
-| Metric | Unguided Legacy Baseline | Guided + `mjg` Hook | Uplift |
-| :--- | :--- | :--- | :--- |
-| **Overall Task Pass Rate** | **1 / 6 (16.7%)** | **6 / 6 (100.0%)** | **+83.3 pp** |
+#### 1. A/B Task Pass Rate (`python3 scripts/eval_suite.py`)
 
 | Task | Target | Unguided Baseline | Guided + `mjg` Hook |
 | :--- | :--- | :--- | :--- |
-| `EVAL-01` Spring Security 6 Config | Java 21, Boot 3.3.4 | FAIL (3 `mjg` findings) | **PASS** (0 findings) |
-| `EVAL-02` Synchronous HTTP Client | Java 21, Boot 3.3.4 | FAIL (3 `mjg` findings) | **PASS** (0 findings) |
-| `EVAL-03` Jakarta EE Persistence/Validation | Java 21, Boot 3.3.4 | FAIL (2 `mjg` findings) | **PASS** (0 findings) |
-| `EVAL-04` Blocking I/O Concurrency | Java 21, Boot 3.3.4 | FAIL (1 `mjg` finding) | **PASS** (0 findings) |
-| `EVAL-05` SequencedCollection & `java.time` | Java 21, Boot 3.3.4 | FAIL (2 `mjg` findings) | **PASS** (0 findings) |
+| `EVAL-01` Spring Security 6 Config | Java 21, Boot 3.3.4 | FAIL (3 findings) | **PASS** (0 findings) |
+| `EVAL-02` Synchronous HTTP Client | Java 21, Boot 3.3.4 | FAIL (3 findings) | **PASS** (0 findings) |
+| `EVAL-03` Jakarta EE Persistence/Validation | Java 21, Boot 3.3.4 | FAIL (2 findings) | **PASS** (0 findings) |
+| `EVAL-04` Blocking I/O Concurrency | Java 21, Boot 3.3.4 | FAIL (1 finding) | **PASS** (0 findings) |
+| `EVAL-05` SequencedCollection & `java.time` | Java 21, Boot 3.3.4 | FAIL (2 findings) | **PASS** (0 findings) |
 | `EVAL-06` Legacy Compatibility Preservation | Java 8, Boot 2.7.18 | PASS (0 false positives) | **PASS** (0 false positives) |
+| **Overall Pass Rate** | **6 tasks** | **16.7% (1/6)** | **100.0% (6/6, +83.3 pp)** |
 
-### 2. Comparison with Existing Java & Spring Boot Skills
+#### 2. Comparison with Existing Java & Spring Boot Skills
 
-| Feature / Metric | **`modern-java-guidance` (`mjg`)** | **`github/awesome-copilot`**<br>(`java-springboot` + `spring-security`) | **`Amplicode/spring-skills`**<br>(`spring-security-configuration`) | **`Santoshrt999/Java-Claude-Skills`**<br>(`java-modernization-review`) |
-| :--- | :--- | :--- | :--- | :--- |
-| **Initial `SKILL.md` Size** | **4,157 bytes** | 9,737 bytes (4,433 + 5,304) | 17,344 bytes (4.2×) | 20,103 bytes (4.8×) |
-| **Executable CLI Scanner** | ✅ `mjg check` (0 LLM tokens) | ❌ Markdown only | ❌ None | ❌ Markdown only |
-| **Auto Version Detection** | ✅ `mjg detect` (`pom.xml` / Gradle) | ⚠️ Manual agent read | ⚠️ Requires IntelliJ MCP | ❌ None |
-| **`PostToolUse` Auto-Block Hook** | ✅ Antigravity & Claude Code | ❌ None | ❌ None | ❌ None |
-| **External / IDE Dependencies** | **Zero** (Python stdlib only) | None | ❌ IntelliJ Amplicode MCP | None |
+| Skill / Repo | Initial `SKILL.md` Size | Executable CLI | Auto Version Detect | `PostToolUse` Hook | Zero IDE/MCP Deps |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`modern-java-guidance` (`mjg`)** | **4,157 bytes** | ✅ `mjg check` / `search` / `retrieve` | ✅ `pom.xml` / Gradle | ✅ Antigravity & Claude | ✅ Python stdlib only |
+| **`github/awesome-copilot`** (`java-springboot` + `spring-security`) | 9,737 bytes | ❌ Markdown only | ⚠️ Manual read | ❌ None | ✅ |
+| **`Amplicode/spring-skills`** (`spring-security-configuration`) | 17,344 bytes | ❌ None | ⚠️ IntelliJ MCP | ❌ None | ❌ Requires IntelliJ MCP |
+| **`Santoshrt999/Java-Claude-Skills`** (`java-modernization-review`) | 20,103 bytes | ❌ Markdown only | ❌ None | ❌ None | ✅ |
 
-### 3. Throughput & Latency (`scripts/benchmark.py`)
+> Verified on `Santoshrt999/Java-Claude-Skills/examples`: `mjg` automatically detected Java 21 from `pom.xml` and flagged `TradeProcessor.java:15` (`Executors.newFixedThreadPool(10)` → `[JAVA-010]`).
 
-Measured on Apple Silicon (Python standard library only):
+#### 3. Throughput & Latency (`python3 scripts/benchmark.py`, Apple Silicon)
 
 | Benchmark | Workload | Result |
 | :--- | :--- | :--- |
@@ -181,6 +191,8 @@ Measured on Apple Silicon (Python standard library only):
 
 ---
 
-## License
+## Contributors & License
 
-[MIT](./LICENSE)
+Found a bug, outdated pattern, or missing Java/Spring Boot rule? [Open an issue](https://github.com/wkd09/modern-java-guidance/issues) or submit a pull request.
+
+Licensed under the [MIT License](./LICENSE).
