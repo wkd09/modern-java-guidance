@@ -13,7 +13,7 @@
 
 [English](./README.md) | [한국어](./README.ko.md) | [简体中文](./README.zh-CN.md)
 
-[Skill Guide](./skills/modern-java-guidance/SKILL.md) · [Eval Suite](./scripts/eval_suite.py) · [Benchmarks](./scripts/benchmark.py) · [Report an Issue](https://github.com/wkd09/modern-java-guidance/issues)
+[Skill Guide](./skills/modern-java-guidance/SKILL.md) · [Semgrep Rules](./rules/semgrep/modern-java-boot3.yaml) · [Eval Suite](./scripts/eval_suite.py) · [Benchmarks](./scripts/benchmark.py) · [Report an Issue](https://github.com/wkd09/modern-java-guidance/issues)
 
 </div>
 
@@ -68,27 +68,35 @@ We cover modern **Java 17 / 21 / 25+** and **Spring Boot 3.x+** patterns. The sk
 * **🏛️ Jakarta EE 10 & Clean DI**: `jakarta.*` migration (`persistence`, `validation`, `servlet`), constructor injection over `@Autowired` field injection, and RFC 9457 `ProblemDetail`.
 * **🛡️ Legacy Preservation**: Automatically gates rules by detected `pom.xml` / `build.gradle(.kts)` versions so Java 8/11 and Boot 2.x repos stay untouched.
 
-### The full list (13 guides & 11 active scanner rules)
+### The full list (13 guides, 11 active scanner rules & Semgrep exports)
+
+**7 of the 11 active rules are silent in `javac`** (valid code that compiles with zero warnings), while the other 4 catch broken/deprecated Boot 3 APIs in **~31 ms** before waiting on a 10–30 s Maven/Gradle build.
 
 <details>
-<summary>Browse all guides & version-gated rules</summary>
+<summary>Browse all guides, compiler overlap, & version-gated rules</summary>
 
 #### Java 17 / 21 / 25+ (`JAVA-*`)
-* [`JAVA-001`](./src/modern_java_guidance/guides.py) *(Java 8+ / Scan 16+)*: Replace `java.util.Date` & `SimpleDateFormat` with `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`).
-* [`JAVA-002`](./src/modern_java_guidance/guides.py) *(Java 9+ / Scan 16+)*: Replace `Collections.unmodifiableList(Arrays.asList(...))` with `List.of` / `Set.of` / `Map.of`.
-* [`JAVA-003`](./src/modern_java_guidance/guides.py) *(Java 15+ / Scan 16+)*: Use `"..." .formatted(...)` instead of `String.format(...)`.
-* [`JAVA-010`](./src/modern_java_guidance/guides.py) *(Java 21+)*: Use `Executors.newVirtualThreadPerTaskExecutor()` for blocking I/O workloads.
-* [`JAVA-011`](./src/modern_java_guidance/guides.py) *(Java 21+)*: Use `SequencedCollection.getFirst()` / `getLast()` instead of `list.get(list.size() - 1)`.
-* [`JAVA-012`](./src/modern_java_guidance/guides.py) *(Java 21+, guide)*: Use `record`, `sealed interface`, and Pattern Matching for `switch`.
+
+| Rule / Guide | Min Version | Caught by `javac`? | Legacy → Modern Replacement |
+| :--- | :--- | :--- | :--- |
+| [`JAVA-001`](./src/modern_java_guidance/guides.py) | Java 8+ (scan 16+) | **No (silent)** | `new Date()` / `SimpleDateFormat` → `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`) |
+| [`JAVA-002`](./src/modern_java_guidance/guides.py) | Java 9+ (scan 16+) | **No (silent)** | `Collections.unmodifiableList(Arrays.asList(...))` → `List.of` / `Set.of` / `Map.of` |
+| [`JAVA-003`](./src/modern_java_guidance/guides.py) | Java 15+ (scan 16+) | **No (silent)** | `String.format(...)` (without explicit `Locale`) → `"..." .formatted(...)` |
+| [`JAVA-010`](./src/modern_java_guidance/guides.py) | Java 21+ | **No (silent)** | `Executors.newFixedThreadPool` / `newCachedThreadPool` → `Executors.newVirtualThreadPerTaskExecutor()` (blocking I/O) |
+| [`JAVA-011`](./src/modern_java_guidance/guides.py) | Java 21+ | **No (silent)** | `list.get(list.size() - 1)` → `SequencedCollection.getLast()` |
+| [`JAVA-012`](./src/modern_java_guidance/guides.py) | Java 21+ *(guide)* | **No (silent)** | Verbose POJOs / `instanceof` casts → `record`, `sealed interface`, Pattern Matching for `switch` |
 
 #### Spring Boot 3.x+ & Security 6 (`BOOT-*`)
-* [`BOOT-001`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: Migrate `javax.{persistence,validation,servlet,annotation,transaction}.*` to `jakarta.*`.
-* [`BOOT-002`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: Replace `WebSecurityConfigurerAdapter` with a `@Bean SecurityFilterChain`.
-* [`BOOT-003`](./src/modern_java_guidance/guides.py) *(Boot 3.2+)*: Use `RestClient` or `@HttpExchange` instead of `RestTemplate`.
-* [`BOOT-004`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: Prefer constructor injection (`private final`) over `@Autowired` field injection.
-* [`BOOT-005`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: Replace `.antMatchers()` / `.mvcMatchers()` / `.authorizeRequests()` with `.authorizeHttpRequests(a -> a.requestMatchers(...))`.
-* [`BOOT-006`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: Replace `.csrf().disable()` with `.csrf(AbstractHttpConfigurer::disable)`.
-* [`BOOT-007`](./src/modern_java_guidance/guides.py) *(Boot 3.0+, guide)*: Return RFC 9457 `ProblemDetail` from `@RestControllerAdvice`.
+
+| Rule / Guide | Min Version | Caught by `javac`? | Legacy → Modern Replacement |
+| :--- | :--- | :--- | :--- |
+| [`BOOT-001`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | Compile error *(build-time)* | `javax.{persistence,validation,servlet,annotation,transaction}.*` → `jakarta.*` |
+| [`BOOT-002`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | Compile error *(build-time)* | `extends WebSecurityConfigurerAdapter` → `@Bean SecurityFilterChain` |
+| [`BOOT-003`](./src/modern_java_guidance/guides.py) | Boot 3.2+ | **No (silent)** | `RestTemplate` / `RestTemplateBuilder` → `RestClient` or `@HttpExchange` |
+| [`BOOT-004`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | **No (silent)** | `@Autowired` field injection → constructor injection (`private final`) |
+| [`BOOT-005`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | Compile error *(build-time)* | `.antMatchers()` / `.mvcMatchers()` / `.authorizeRequests()` → `.authorizeHttpRequests(a -> a.requestMatchers(...))` |
+| [`BOOT-006`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | `@Deprecated` *(build-time)* | `.csrf().disable()` → keep CSRF enabled by default; `.csrf(AbstractHttpConfigurer::disable)` only for non-browser credentials (e.g., Bearer JWT) |
+| [`BOOT-007`](./src/modern_java_guidance/guides.py) | Boot 3.0+ *(guide)* | **No (silent)** | Custom ad-hoc error payloads → RFC 9457 `ProblemDetail` in `@RestControllerAdvice` |
 
 </details>
 
@@ -109,6 +117,34 @@ We cover modern **Java 17 / 21 / 25+** and **Spring Boot 3.x+** patterns. The sk
 
 > [!TIP]
 > The CLI works **100% offline, private, and local** using only the Python 3.11+ standard library—no network calls, no API keys, and zero third-party supply-chain dependencies.
+
+---
+
+## How `mjg` Complements `javac`, IDEs, and Semgrep
+
+`mjg` is designed to sit **upstream** of your compiler and CI analyzers—inside the AI agent's edit loop—not to replace them:
+
+| Layer | Feedback Timing | Catches Silent Legacy Patterns? (`RestTemplate`, `@Autowired`, `new Date()`, `newFixedThreadPool`) | Works in Headless AI Agent Loops? |
+| :--- | :--- | :--- | :--- |
+| **`javac` / Maven / Gradle** | 10–30 s per build | ❌ Only compile errors & `@Deprecated` | ⚠️ Slow inner-loop feedback |
+| **IDE (IntelliJ IDEA)** | Real-time for humans | ⚠️ Partial (requires interactive GUI) | ❌ Not available to headless CLI agents |
+| **Semgrep (CI / PR gate)** | PR / CI pipeline | ✅ Full Java AST rules | ✅ Exported directly from `mjg` |
+| **`mjg` `PostToolUse` Hook** | **~31 ms per `.java` edit** | ✅ **7/11 rules are silent in `javac`** + pre-build catch for the other 4 | ✅ Native Claude Code & Antigravity hooks |
+
+### Use the Same Rules in Semgrep (CI & Non-Agent Workflows)
+
+You can run the bundled Java AST Semgrep ruleset directly in CI—or generate a version-gated ruleset tailored to your repository's `pom.xml` / `build.gradle(.kts)`:
+
+```bash
+# Run the pre-generated Java 21 + Spring Boot 3.2+ Semgrep ruleset directly
+semgrep --config https://raw.githubusercontent.com/wkd09/modern-java-guidance/main/rules/semgrep/modern-java-boot3.yaml .
+
+# Or export a version-gated Semgrep ruleset matching your project's detected Java & Boot versions
+mjg export --format semgrep --path . -o .semgrep/modern-java.yaml
+semgrep --config .semgrep/modern-java.yaml .
+```
+
+All 11 Semgrep rules in [`rules/semgrep/modern-java-boot3.yaml`](./rules/semgrep/modern-java-boot3.yaml) are validated and unit-tested (`semgrep --validate` + `semgrep --test` against [`modern-java-boot3.java`](./rules/semgrep/modern-java-boot3.java)) in CI on every push.
 
 ---
 

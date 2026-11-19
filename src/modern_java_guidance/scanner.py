@@ -13,6 +13,7 @@ from modern_java_guidance.detector import ProjectProfile
 class Finding:
     rule_id: str
     severity: str
+    caught_by_javac: str
     file: str
     line: int
     legacy_snippet: str
@@ -23,6 +24,7 @@ class Finding:
         return {
             "rule_id": self.rule_id,
             "severity": self.severity,
+            "caught_by_javac": self.caught_by_javac,
             "file": self.file,
             "line": self.line,
             "legacy_snippet": self.legacy_snippet,
@@ -37,6 +39,7 @@ class Rule:
     min_java: int
     min_boot: tuple[int, int, int] | None
     severity: str
+    caught_by_javac: str
     pattern: re.Pattern[str]
     message: str
     modern_replacement: str
@@ -49,6 +52,7 @@ RULES: tuple[Rule, ...] = (
         min_java=16,
         min_boot=None,
         severity="warning",
+        caught_by_javac="no",
         pattern=re.compile(r"\bnew\s+(?:java\.util\.)?Date\s*\(\s*\)|new\s+SimpleDateFormat\s*\("),
         message="Legacy mutable date/time API detected.",
         modern_replacement="Use java.time (Instant.now(), LocalDate, ZonedDateTime, DateTimeFormatter).",
@@ -58,6 +62,7 @@ RULES: tuple[Rule, ...] = (
         min_java=16,
         min_boot=None,
         severity="warning",
+        caught_by_javac="no",
         pattern=re.compile(r"Collections\.unmodifiable(?:List|Set|Map)\s*\(\s*Arrays\.asList\s*\("),
         message="Verbose pre-Java 9 unmodifiable collection boilerplate.",
         modern_replacement="Use List.of(...), Set.of(...), or Map.of(...).",
@@ -67,6 +72,7 @@ RULES: tuple[Rule, ...] = (
         min_java=16,
         min_boot=None,
         severity="info",
+        caught_by_javac="no",
         pattern=re.compile(r"String\.format\s*\("),
         message="Static String.format(...) can be written more readably with Java 15+ .formatted(...).",
         modern_replacement="Use \"...\".formatted(args...).",
@@ -77,6 +83,7 @@ RULES: tuple[Rule, ...] = (
         min_java=21,
         min_boot=None,
         severity="warning",
+        caught_by_javac="no",
         pattern=re.compile(r"Executors\.new(?:FixedThreadPool|CachedThreadPool)\s*\("),
         message="Platform thread pool used on Java 21+ for potentially I/O-bound concurrency.",
         modern_replacement="Prefer Executors.newVirtualThreadPerTaskExecutor() for I/O-bound workloads (keep bounded pools/semaphores only for CPU-bound or rate-limited tasks).",
@@ -86,6 +93,7 @@ RULES: tuple[Rule, ...] = (
         min_java=21,
         min_boot=None,
         severity="warning",
+        caught_by_javac="no",
         pattern=re.compile(r"\.get\s*\(\s*[a-zA-Z_]\w*\.size\s*\(\s*\)\s*-\s*1\s*\)"),
         message="Manual last-element indexing via list.get(list.size() - 1) on Java 21+.",
         modern_replacement="Use SequencedCollection.getLast() (and getFirst() instead of .get(0)).",
@@ -96,6 +104,7 @@ RULES: tuple[Rule, ...] = (
         min_java=17,
         min_boot=(3, 0, 0),
         severity="error",
+        caught_by_javac="compile-error",
         pattern=re.compile(r"^\s*import\s+javax\.(persistence|validation|servlet|annotation|transaction)\."),
         message="Legacy javax.* EE import detected in a Spring Boot 3.x+ project.",
         modern_replacement="Replace javax.* with jakarta.* (Jakarta EE 10).",
@@ -105,6 +114,7 @@ RULES: tuple[Rule, ...] = (
         min_java=17,
         min_boot=(3, 0, 0),
         severity="error",
+        caught_by_javac="compile-error",
         pattern=re.compile(r"\bextends\s+WebSecurityConfigurerAdapter\b"),
         message="WebSecurityConfigurerAdapter was removed in Spring Security 6 / Spring Boot 3.",
         modern_replacement="Declare a @Bean SecurityFilterChain method using HttpSecurity Lambda DSL.",
@@ -114,6 +124,7 @@ RULES: tuple[Rule, ...] = (
         min_java=17,
         min_boot=(3, 2, 0),
         severity="warning",
+        caught_by_javac="no",
         pattern=re.compile(r"\b(?:new\s+RestTemplate\s*\(|RestTemplateBuilder|RestTemplate)\b"),
         message="Legacy RestTemplate detected in Spring Boot 3.2+.",
         modern_replacement="Use RestClient (RestClient.builder()) or declarative @HttpExchange interfaces.",
@@ -123,6 +134,7 @@ RULES: tuple[Rule, ...] = (
         min_java=17,
         min_boot=(3, 0, 0),
         severity="warning",
+        caught_by_javac="no",
         pattern=re.compile(r"^\s*@Autowired\s*$"),
         message="Field injection with @Autowired makes testing harder and hides dependencies.",
         modern_replacement="Use constructor injection (final fields; omit @Autowired on single constructors).",
@@ -132,6 +144,7 @@ RULES: tuple[Rule, ...] = (
         min_java=17,
         min_boot=(3, 0, 0),
         severity="error",
+        caught_by_javac="compile-error",
         pattern=re.compile(r"\.(?:antMatchers|mvcMatchers|authorizeRequests)\s*\("),
         message="Removed Spring Security 5 matcher/authorization API detected in Boot 3+.",
         modern_replacement="Use authorizeHttpRequests(auth -> auth.requestMatchers(...)).",
@@ -141,9 +154,10 @@ RULES: tuple[Rule, ...] = (
         min_java=17,
         min_boot=(3, 0, 0),
         severity="error",
+        caught_by_javac="deprecated",
         pattern=re.compile(r"\.csrf\s*\(\s*\)\s*\.\s*disable\s*\(\s*\)"),
         message="Deprecated non-lambda .csrf().disable() syntax removed/deprecated in Spring Security 6.",
-        modern_replacement="Use .csrf(AbstractHttpConfigurer::disable) or .csrf(csrf -> csrf.disable()).",
+        modern_replacement="Keep CSRF enabled by default; only use .csrf(AbstractHttpConfigurer::disable) for non-browser-attached credentials (e.g., Bearer JWT).",
     ),
 )
 
@@ -205,6 +219,7 @@ def scan_file(java_path: Path, profile: ProjectProfile) -> list[Finding]:
                     Finding(
                         rule_id=rule.rule_id,
                         severity=rule.severity,
+                        caught_by_javac=rule.caught_by_javac,
                         file=str(java_path),
                         line=idx,
                         legacy_snippet=raw_line.strip(),

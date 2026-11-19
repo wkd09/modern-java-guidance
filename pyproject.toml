@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modern-java-guidance"
-version = "0.1.0"
+version = "0.2.0"
 description = "Version-aware CLI scanner, Post-Edit Hook, and Agent Skill that stops AI coding agents from generating legacy Java 8 and Spring Boot 2.x code."
 readme = "README.md"
 license = { text = "MIT" }

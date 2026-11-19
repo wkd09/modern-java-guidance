@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from modern_java_guidance.detector import ProjectProfile, _parse_boot_tuple, detect_project
+from modern_java_guidance.exporters import export_semgrep_yaml
 from modern_java_guidance.guides import retrieve_guide, search_guides
 from modern_java_guidance.hook import run_hook
 from modern_java_guidance.scanner import scan_target
@@ -108,6 +109,24 @@ def _cmd_retrieve(args: argparse.Namespace) -> int:
     print("\n## After (Modern)")
     print(entry.after_code)
     print(f"\n## Caveat\n{entry.caveat}")
+    return 0
+
+
+def _cmd_export(args: argparse.Namespace) -> int:
+    profile = detect_project(Path(args.path))
+    if args.java is not None or args.boot is not None:
+        java_ver = args.java if args.java is not None else profile.java_version
+        boot_ver = _parse_boot_tuple(args.boot) if args.boot is not None else profile.spring_boot_version
+        profile = ProjectProfile(java_ver, boot_ver, profile.source_file, profile.uses_spring_security)
+
+    content = export_semgrep_yaml(profile)
+    if args.output:
+        out_path = Path(args.output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(content, encoding="utf-8")
+        print(f"Exported {args.format} rules -> {out_path}")
+    else:
+        print(content, end="")
     return 0
 
 
@@ -216,6 +235,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_retrieve.add_argument("guide_id", help="Guide ID (e.g. JAVA-010, BOOT-002)")
     p_retrieve.add_argument("--json", action="store_true", help="Output JSON")
     p_retrieve.set_defaults(func=_cmd_retrieve)
+
+    p_export = sub.add_parser("export", help="Export version-gated rules to external static analysis tools.")
+    p_export.add_argument("--format", choices=("semgrep",), default="semgrep", help="Target format (default: semgrep)")
+    p_export.add_argument("--path", default=".", help="Project path for auto-detecting versions (default: .)")
+    p_export.add_argument("--java", type=int, help="Override detected Java version")
+    p_export.add_argument("--boot", type=str, help="Override detected Spring Boot version (e.g. 3.3.0)")
+    p_export.add_argument("-o", "--output", type=str, help="Write exported rules to file instead of stdout")
+    p_export.set_defaults(func=_cmd_export)
 
     p_setup = sub.add_parser("setup", help="Install global skill and configure PostToolUse hooks.")
     p_setup.add_argument("--target", choices=("antigravity", "claude", "all"), default="antigravity")

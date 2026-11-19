@@ -13,7 +13,7 @@
 
 [English](./README.md) | [한국어](./README.ko.md) | [简体中文](./README.zh-CN.md)
 
-[Skill 指南](./skills/modern-java-guidance/SKILL.md) · [A/B 评估套件](./scripts/eval_suite.py) · [性能基准](./scripts/benchmark.py) · [提交 Issue](https://github.com/wkd09/modern-java-guidance/issues)
+[Skill 指南](./skills/modern-java-guidance/SKILL.md) · [Semgrep 规则](./rules/semgrep/modern-java-boot3.yaml) · [A/B 评估套件](./scripts/eval_suite.py) · [性能基准](./scripts/benchmark.py) · [提交 Issue](https://github.com/wkd09/modern-java-guidance/issues)
 
 </div>
 
@@ -68,27 +68,35 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 * **🏛️ Jakarta EE 10 与依赖注入**：`jakarta.*` 迁移、构造函数注入替代 `@Autowired` 字段注入，以及 RFC 9457 `ProblemDetail`。
 * **🛡️ 旧版本兼容性保护**：当 `pom.xml` 或 `build.gradle(.kts)` 面向 Java 8/11 或 Boot 2.x 时，自动关闭 Java 21 与 Boot 3+ 规则。
 
-### 完整规则与指南清单（13 篇指南 & 11 条可执行扫描规则）
+### 完整规则与指南清单（13 篇指南 · 11 条可执行规则 · Semgrep 导出）
+
+**11 条扫描规则中有 7 条在 `javac` 编译时完全静默（零警告）**，其余 4 条可在等待 10–30 秒 Maven/Gradle 构建前以 **~31 ms** 提前拦截。
 
 <details>
-<summary>查看所有指南与版本门控规则</summary>
+<summary>查看所有指南、编译器重叠情况与版本门控规则</summary>
 
 #### Java 17 / 21 / 25+ (`JAVA-*`)
-* [`JAVA-001`](./src/modern_java_guidance/guides.py) *(Java 8+ / 扫描 16+)*：`java.util.Date` & `SimpleDateFormat` → `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`)。
-* [`JAVA-002`](./src/modern_java_guidance/guides.py) *(Java 9+ / 扫描 16+)*：`Collections.unmodifiableList(Arrays.asList(...))` → `List.of` / `Set.of` / `Map.of`。
-* [`JAVA-003`](./src/modern_java_guidance/guides.py) *(Java 15+ / 扫描 16+)*：`String.format(...)` → `"..." .formatted(...)`。
-* [`JAVA-010`](./src/modern_java_guidance/guides.py) *(Java 21+)*：阻塞 I/O 使用 `Executors.newVirtualThreadPerTaskExecutor()`。
-* [`JAVA-011`](./src/modern_java_guidance/guides.py) *(Java 21+)*：`list.get(list.size() - 1)` → `SequencedCollection.getFirst()` / `getLast()`。
-* [`JAVA-012`](./src/modern_java_guidance/guides.py) *(Java 21+, 指南)*：`record`、`sealed interface` 与 `switch` 模式匹配。
+
+| 规则 / 指南 | 最低版本 | `javac` 是否检出？ | 遗留写法 → 现代替代 |
+| :--- | :--- | :--- | :--- |
+| [`JAVA-001`](./src/modern_java_guidance/guides.py) | Java 8+ (扫描 16+) | **否（静默）** | `new Date()` / `SimpleDateFormat` → `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`) |
+| [`JAVA-002`](./src/modern_java_guidance/guides.py) | Java 9+ (扫描 16+) | **否（静默）** | `Collections.unmodifiableList(Arrays.asList(...))` → `List.of` / `Set.of` / `Map.of` |
+| [`JAVA-003`](./src/modern_java_guidance/guides.py) | Java 15+ (扫描 16+) | **否（静默）** | `String.format(...)`（未显式传 `Locale`）→ `"..." .formatted(...)` |
+| [`JAVA-010`](./src/modern_java_guidance/guides.py) | Java 21+ | **否（静默）** | `Executors.newFixedThreadPool` / `newCachedThreadPool` → `Executors.newVirtualThreadPerTaskExecutor()`（阻塞 I/O） |
+| [`JAVA-011`](./src/modern_java_guidance/guides.py) | Java 21+ | **否（静默）** | `list.get(list.size() - 1)` → `SequencedCollection.getLast()` |
+| [`JAVA-012`](./src/modern_java_guidance/guides.py) | Java 21+ *(指南)* | **否（静默）** | 冗长 POJO / `instanceof` 强转 → `record`、`sealed interface`、`switch` 模式匹配 |
 
 #### Spring Boot 3.x+ & Security 6 (`BOOT-*`)
-* [`BOOT-001`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*：`javax.{persistence,validation,servlet,annotation,transaction}.*` → `jakarta.*`。
-* [`BOOT-002`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*：`WebSecurityConfigurerAdapter` → `@Bean SecurityFilterChain`。
-* [`BOOT-003`](./src/modern_java_guidance/guides.py) *(Boot 3.2+)*：`RestTemplate` → `RestClient` 或 `@HttpExchange`。
-* [`BOOT-004`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*：`@Autowired` 字段注入 → 构造函数注入（`private final`）。
-* [`BOOT-005`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*：`.antMatchers()` / `.mvcMatchers()` / `.authorizeRequests()` → `.authorizeHttpRequests(a -> a.requestMatchers(...))`。
-* [`BOOT-006`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*：`.csrf().disable()` → `.csrf(AbstractHttpConfigurer::disable)`。
-* [`BOOT-007`](./src/modern_java_guidance/guides.py) *(Boot 3.0+, 指南)*：在 `@RestControllerAdvice` 中返回 RFC 9457 `ProblemDetail`。
+
+| 规则 / 指南 | 最低版本 | `javac` 是否检出？ | 遗留写法 → 现代替代 |
+| :--- | :--- | :--- | :--- |
+| [`BOOT-001`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | 编译错误 *(构建期)* | `javax.{persistence,validation,servlet,annotation,transaction}.*` → `jakarta.*` |
+| [`BOOT-002`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | 编译错误 *(构建期)* | `extends WebSecurityConfigurerAdapter` → `@Bean SecurityFilterChain` |
+| [`BOOT-003`](./src/modern_java_guidance/guides.py) | Boot 3.2+ | **否（静默）** | `RestTemplate` / `RestTemplateBuilder` → `RestClient` 或 `@HttpExchange` |
+| [`BOOT-004`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | **否（静默）** | `@Autowired` 字段注入 → 构造函数注入（`private final`） |
+| [`BOOT-005`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | 编译错误 *(构建期)* | `.antMatchers()` / `.mvcMatchers()` / `.authorizeRequests()` → `.authorizeHttpRequests(a -> a.requestMatchers(...))` |
+| [`BOOT-006`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | `@Deprecated` *(构建期)* | `.csrf().disable()` → 默认保留 CSRF；仅对非浏览器凭证（如 Bearer JWT）使用 `.csrf(AbstractHttpConfigurer::disable)` |
+| [`BOOT-007`](./src/modern_java_guidance/guides.py) | Boot 3.0+ *(指南)* | **否（静默）** | 自定义错误体 → 在 `@RestControllerAdvice` 中返回 RFC 9457 `ProblemDetail` |
 
 </details>
 
@@ -109,6 +117,34 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 
 > [!TIP]
 > `mjg` CLI 仅依赖 Python 3.11+ 标准库，**100% 离线、本地运行**，无需网络请求、API Key 或第三方供应链依赖。
+
+---
+
+## 与 `javac`、IDE 和 Semgrep 的互补关系
+
+`mjg` 并非用于替代编译器或 CI 静态分析器，而是嵌入在 **AI 编程助手的编辑循环内（构建之前）** 提供即时护栏：
+
+| 层级 | 反馈时机 | 是否检出静默遗留写法？（`RestTemplate`、`@Autowired`、`new Date()`、`newFixedThreadPool`） | 支持无头 AI Agent 循环？ |
+| :--- | :--- | :--- | :--- |
+| **`javac` / Maven / Gradle** | 每次构建 10–30 秒 | ❌ 仅编译错误与 `@Deprecated` | ⚠️ 内循环反馈偏慢 |
+| **IDE (IntelliJ IDEA)** | 人工编辑实时提示 | ⚠️ 部分支持（需要 GUI） | ❌ 无头 CLI Agent 不可用 |
+| **Semgrep (CI / PR 门禁)** | PR / CI 流水线 | ✅ 完整 Java AST 规则 | ✅ 可直接由 `mjg` 导出 |
+| **`mjg` `PostToolUse` Hook** | **每次修改 `.java` ~31 ms** | ✅ **11 条中有 7 条在 `javac` 下静默** + 提前拦截其余 4 条 | ✅ 原生支持 Claude Code & Antigravity |
+
+### 在 Semgrep 中复用同一套规则（CI 与非 Agent 场景）
+
+可直接在 CI 中运行内置的 Java AST Semgrep 规则集，或根据项目的 `pom.xml` / `build.gradle(.kts)` 导出按版本门控的规则文件：
+
+```bash
+# 直接运行内置的 Java 21 + Spring Boot 3.2+ Semgrep 规则集
+semgrep --config https://raw.githubusercontent.com/wkd09/modern-java-guidance/main/rules/semgrep/modern-java-boot3.yaml .
+
+# 或根据当前项目检测到的版本导出专属 Semgrep YAML
+mjg export --format semgrep --path . -o .semgrep/modern-java.yaml
+semgrep --config .semgrep/modern-java.yaml .
+```
+
+[`rules/semgrep/modern-java-boot3.yaml`](./rules/semgrep/modern-java-boot3.yaml) 中的全部 11 条规则均在 CI 中通过 `semgrep --validate` 与 `semgrep --test`（对应 [`modern-java-boot3.java`](./rules/semgrep/modern-java-boot3.java)）自动验证。
 
 ---
 

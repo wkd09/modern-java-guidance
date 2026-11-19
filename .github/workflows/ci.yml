@@ -25,3 +25,23 @@ jobs:
         run: python scripts/eval_suite.py
       - name: Run benchmark sanity check
         run: python scripts/benchmark.py
+
+  semgrep-rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install package and Semgrep
+        run: |
+          pip install -e .
+          pip install semgrep
+      - name: Verify exported Semgrep YAML matches committed ruleset
+        run: |
+          mjg export --format semgrep --java 21 --boot 3.3.0 -o /tmp/exported.yaml
+          diff -u rules/semgrep/modern-java-boot3.yaml /tmp/exported.yaml
+      - name: Validate and unit-test Semgrep rules
+        run: |
+          semgrep --validate --config rules/semgrep/modern-java-boot3.yaml
+          semgrep --test rules/semgrep/

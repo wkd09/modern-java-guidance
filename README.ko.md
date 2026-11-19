@@ -13,7 +13,7 @@
 
 [English](./README.md) | [한국어](./README.ko.md) | [简体中文](./README.zh-CN.md)
 
-[스킬 가이드](./skills/modern-java-guidance/SKILL.md) · [A/B 평가 스위트](./scripts/eval_suite.py) · [벤치마크](./scripts/benchmark.py) · [이슈 제보](https://github.com/wkd09/modern-java-guidance/issues)
+[스킬 가이드](./skills/modern-java-guidance/SKILL.md) · [Semgrep 규칙](./rules/semgrep/modern-java-boot3.yaml) · [A/B 평가 스위트](./scripts/eval_suite.py) · [벤치마크](./scripts/benchmark.py) · [이슈 제보](https://github.com/wkd09/modern-java-guidance/issues)
 
 </div>
 
@@ -68,27 +68,35 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 * **🏛️ Jakarta EE 10 & 깔끔한 DI**: `jakarta.*` 마이그레이션, `@Autowired` 필드 주입 대신 생성자 주입, RFC 9457 `ProblemDetail`.
 * **🛡️ 레거시 호환성 보존**: `pom.xml`/`build.gradle(.kts)`가 Java 8/11 또는 Boot 2.x를 타겟으로 하면 Java 21 / Boot 3+ 규칙을 자동으로 비활성화합니다.
 
-### 전체 목록 (온디맨드 가이드 13종 & 스캐너 규칙 11종)
+### 전체 목록 (온디맨드 가이드 13종 · 스캐너 규칙 11종 · Semgrep 내보내기)
+
+**활성 규칙 11개 중 7개는 `javac`가 아무 경고 없이 통과시키는 침묵(silent) 레거시 패턴**이며, 나머지 4개도 10–30초짜리 Maven/Gradle 빌드 전에 **~31 ms** 만에 즉시 차단합니다.
 
 <details>
-<summary>모든 가이드 및 버전 게이팅 규칙 보기</summary>
+<summary>모든 가이드, 컴파일러 중복 여부, 및 버전 게이팅 규칙 보기</summary>
 
 #### Java 17 / 21 / 25+ (`JAVA-*`)
-* [`JAVA-001`](./src/modern_java_guidance/guides.py) *(Java 8+ / 스캔 16+)*: `java.util.Date` & `SimpleDateFormat` → `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`).
-* [`JAVA-002`](./src/modern_java_guidance/guides.py) *(Java 9+ / 스캔 16+)*: `Collections.unmodifiableList(Arrays.asList(...))` → `List.of` / `Set.of` / `Map.of`.
-* [`JAVA-003`](./src/modern_java_guidance/guides.py) *(Java 15+ / 스캔 16+)*: `String.format(...)` → `"..." .formatted(...)`.
-* [`JAVA-010`](./src/modern_java_guidance/guides.py) *(Java 21+)*: 블로킹 I/O에 `Executors.newVirtualThreadPerTaskExecutor()` 사용.
-* [`JAVA-011`](./src/modern_java_guidance/guides.py) *(Java 21+)*: `list.get(list.size() - 1)` → `SequencedCollection.getFirst()` / `getLast()`.
-* [`JAVA-012`](./src/modern_java_guidance/guides.py) *(Java 21+, 가이드)*: `record`, `sealed interface`, `switch` 패턴 매칭.
+
+| 규칙 / 가이드 | 최소 버전 | `javac` 검출 여부 | 레거시 → 모던 대체 패턴 |
+| :--- | :--- | :--- | :--- |
+| [`JAVA-001`](./src/modern_java_guidance/guides.py) | Java 8+ (스캔 16+) | **미검출 (침묵)** | `new Date()` / `SimpleDateFormat` → `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`) |
+| [`JAVA-002`](./src/modern_java_guidance/guides.py) | Java 9+ (스캔 16+) | **미검출 (침묵)** | `Collections.unmodifiableList(Arrays.asList(...))` → `List.of` / `Set.of` / `Map.of` |
+| [`JAVA-003`](./src/modern_java_guidance/guides.py) | Java 15+ (스캔 16+) | **미검출 (침묵)** | `String.format(...)` (`Locale` 미지정 시) → `"..." .formatted(...)` |
+| [`JAVA-010`](./src/modern_java_guidance/guides.py) | Java 21+ | **미검출 (침묵)** | `Executors.newFixedThreadPool` / `newCachedThreadPool` → `Executors.newVirtualThreadPerTaskExecutor()` (블로킹 I/O) |
+| [`JAVA-011`](./src/modern_java_guidance/guides.py) | Java 21+ | **미검출 (침묵)** | `list.get(list.size() - 1)` → `SequencedCollection.getLast()` |
+| [`JAVA-012`](./src/modern_java_guidance/guides.py) | Java 21+ *(가이드)* | **미검출 (침묵)** | 장황한 POJO / `instanceof` 캐스팅 → `record`, `sealed interface`, `switch` 패턴 매칭 |
 
 #### Spring Boot 3.x+ & Security 6 (`BOOT-*`)
-* [`BOOT-001`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: `javax.{persistence,validation,servlet,annotation,transaction}.*` → `jakarta.*`.
-* [`BOOT-002`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: `WebSecurityConfigurerAdapter` → `@Bean SecurityFilterChain`.
-* [`BOOT-003`](./src/modern_java_guidance/guides.py) *(Boot 3.2+)*: `RestTemplate` → `RestClient` 또는 `@HttpExchange`.
-* [`BOOT-004`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: `@Autowired` 필드 주입 → 생성자 주입 (`private final`).
-* [`BOOT-005`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: `.antMatchers()` / `.mvcMatchers()` / `.authorizeRequests()` → `.authorizeHttpRequests(a -> a.requestMatchers(...))`.
-* [`BOOT-006`](./src/modern_java_guidance/guides.py) *(Boot 3.0+)*: `.csrf().disable()` → `.csrf(AbstractHttpConfigurer::disable)`.
-* [`BOOT-007`](./src/modern_java_guidance/guides.py) *(Boot 3.0+, 가이드)*: `@RestControllerAdvice`에서 RFC 9457 `ProblemDetail` 반환.
+
+| 규칙 / 가이드 | 최소 버전 | `javac` 검출 여부 | 레거시 → 모던 대체 패턴 |
+| :--- | :--- | :--- | :--- |
+| [`BOOT-001`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | 컴파일 에러 *(빌드 시)* | `javax.{persistence,validation,servlet,annotation,transaction}.*` → `jakarta.*` |
+| [`BOOT-002`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | 컴파일 에러 *(빌드 시)* | `extends WebSecurityConfigurerAdapter` → `@Bean SecurityFilterChain` |
+| [`BOOT-003`](./src/modern_java_guidance/guides.py) | Boot 3.2+ | **미검출 (침묵)** | `RestTemplate` / `RestTemplateBuilder` → `RestClient` 또는 `@HttpExchange` |
+| [`BOOT-004`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | **미검출 (침묵)** | `@Autowired` 필드 주입 → 생성자 주입 (`private final`) |
+| [`BOOT-005`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | 컴파일 에러 *(빌드 시)* | `.antMatchers()` / `.mvcMatchers()` / `.authorizeRequests()` → `.authorizeHttpRequests(a -> a.requestMatchers(...))` |
+| [`BOOT-006`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | `@Deprecated` *(빌드 시)* | `.csrf().disable()` → 기본 CSRF 유지; 브라우저 비연동 인증(Bearer JWT 등)에 한해 `.csrf(AbstractHttpConfigurer::disable)` |
+| [`BOOT-007`](./src/modern_java_guidance/guides.py) | Boot 3.0+ *(가이드)* | **미검출 (침묵)** | 임의 에러 JSON → `@RestControllerAdvice`에서 RFC 9457 `ProblemDetail` 반환 |
 
 </details>
 
@@ -109,6 +117,34 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 
 > [!TIP]
 > `mjg` CLI는 Python 3.11+ 표준 라이브러리만으로 **100% 오프라인·로컬 환경**에서 동작하며 외부 네트워크 호출이나 API 키, 서드파티 의존성이 전혀 없습니다.
+
+---
+
+## `javac`, IDE, Semgrep과의 역할 분담
+
+`mjg`는 컴파일러나 기존 정적 분석기를 대체하는 도구가 아니라, **AI 코딩 에이전트의 파일 수정 직후(빌드 이전)** 단계를 보완하는 앞단 가드레일입니다:
+
+| 계층 | 피드백 시점 | 침묵 레거시 패턴 검출? (`RestTemplate`, `@Autowired`, `new Date()`, `newFixedThreadPool`) | 헤드리스 AI 에이전트 루프 지원? |
+| :--- | :--- | :--- | :--- |
+| **`javac` / Maven / Gradle** | 빌드당 10–30초 | ❌ 컴파일 에러 및 `@Deprecated`만 검출 | ⚠️ 내부 편집 루프에 쓰기엔 느림 |
+| **IDE (IntelliJ IDEA)** | 사람 편집 시 실시간 | ⚠️ 부분 지원 (GUI 환경 필요) | ❌ 헤드리스 CLI 에이전트에서 사용 불가 |
+| **Semgrep (CI / PR 게이트)** | PR / CI 파이프라인 | ✅ Java AST 기반 정밀 분석 | ✅ `mjg`에서 규칙 바로 내보내기 가능 |
+| **`mjg` `PostToolUse` 훅** | **`.java` 수정당 ~31 ms** | ✅ **11개 중 7개가 `javac` 미검출 규칙** + 나머지 4개 빌드 전 즉시 차단 | ✅ Claude Code & Antigravity 네이티브 훅 |
+
+### Semgrep 규칙으로 CI 및 일반 워크플로우에서도 재사용하기
+
+내장된 Java AST Semgrep 규칙을 CI에서 바로 실행하거나, 현재 프로젝트의 `pom.xml` / `build.gradle(.kts)` 버전에 맞춘 규칙 파일만 선택적으로 내보낼 수 있습니다:
+
+```bash
+# Java 21 + Spring Boot 3.2+ 기본 Semgrep 규칙 바로 실행
+semgrep --config https://raw.githubusercontent.com/wkd09/modern-java-guidance/main/rules/semgrep/modern-java-boot3.yaml .
+
+# 또는 현재 프로젝트 버전에 맞춘 버전 게이팅 Semgrep YAML 생성
+mjg export --format semgrep --path . -o .semgrep/modern-java.yaml
+semgrep --config .semgrep/modern-java.yaml .
+```
+
+[`rules/semgrep/modern-java-boot3.yaml`](./rules/semgrep/modern-java-boot3.yaml)의 11개 규칙은 모두 CI에서 `semgrep --validate`와 `semgrep --test`([`modern-java-boot3.java`](./rules/semgrep/modern-java-boot3.java))로 자동 검증됩니다.
 
 ---
 

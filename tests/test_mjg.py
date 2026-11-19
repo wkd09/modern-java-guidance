@@ -8,7 +8,8 @@ import unittest
 from pathlib import Path
 
 from modern_java_guidance.cli import main
-from modern_java_guidance.detector import detect_project
+from modern_java_guidance.detector import ProjectProfile, detect_project
+from modern_java_guidance.exporters import export_semgrep_yaml, filter_semgrep_rules
 from modern_java_guidance.hook import run_hook
 from modern_java_guidance.scanner import scan_file
 
@@ -151,6 +152,18 @@ java {
             date_lines = [f.line for f in findings_modern if f.rule_id == "JAVA-001"]
             self.assertEqual(date_lines, [16])
 
+            # Verify caught_by_javac metadata accurately distinguishes silent vs compiler-caught rules
+            javac_map = {f.rule_id: f.caught_by_javac for f in findings_modern}
+            self.assertEqual(javac_map["JAVA-001"], "no")
+            self.assertEqual(javac_map["JAVA-010"], "no")
+            self.assertEqual(javac_map["BOOT-003"], "no")
+            self.assertEqual(javac_map["BOOT-004"], "no")
+            self.assertEqual(javac_map["BOOT-001"], "compile-error")
+            self.assertEqual(javac_map["BOOT-002"], "compile-error")
+            self.assertEqual(javac_map["BOOT-005"], "compile-error")
+            self.assertEqual(javac_map["BOOT-006"], "deprecated")
+            self.assertIn("caught_by_javac", findings_modern[0].to_dict())
+
     def test_hook_antigravity_and_claude_formats(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -207,6 +220,33 @@ java {
         self.assertEqual(main(["search", "security"]), 0)
         self.assertEqual(main(["retrieve", "BOOT-002"]), 0)
         self.assertEqual(main(["retrieve", "NONEXISTENT-999"]), 1)
+
+    def test_semgrep_export_version_gating_and_sync(self) -> None:
+        # Java 8 + Boot 2.7 -> no modern rules exported
+        legacy_profile = ProjectProfile(java_version=8, spring_boot_version=(2, 7, 18), source_file=None)
+        self.assertEqual(filter_semgrep_rules(legacy_profile), [])
+        self.assertIn("rules: []", export_semgrep_yaml(legacy_profile))
+
+        # Java 21 + Boot 3.1 -> omits BOOT-003 (RestClient added in Boot 3.2)
+        boot31_profile = ProjectProfile(java_version=21, spring_boot_version=(3, 1, 5), source_file=None)
+        boot31_ids = {spec.rule_id for spec in filter_semgrep_rules(boot31_profile)}
+        self.assertNotIn("BOOT-003", boot31_ids)
+        self.assertIn("BOOT-001", boot31_ids)
+        self.assertIn("JAVA-010", boot31_ids)
+
+        # Java 21 + Boot 3.3 -> all 11 rules exported, matching committed ruleset
+        boot33_profile = ProjectProfile(java_version=21, spring_boot_version=(3, 3, 0), source_file=None)
+        exported = export_semgrep_yaml(boot33_profile)
+        self.assertEqual(len(filter_semgrep_rules(boot33_profile)), 11)
+        committed_yaml = Path(__file__).resolve().parent.parent / "rules" / "semgrep" / "modern-java-boot3.yaml"
+        self.assertEqual(exported, committed_yaml.read_text(encoding="utf-8"))
+
+        # CLI export writes valid output file
+        with tempfile.TemporaryDirectory() as tmp:
+            out_file = Path(tmp) / "custom.yaml"
+            rc = main(["export", "--format", "semgrep", "--java", "21", "--boot", "3.3.0", "-o", str(out_file)])
+            self.assertEqual(rc, 0)
+            self.assertEqual(out_file.read_text(encoding="utf-8"), exported)
 
 
 if __name__ == "__main__":

@@ -68,4 +68,4 @@ After writing or editing `.java` files, run the version-aware scanner (or let th
 mjg check src/
 ```
 
-Fix all `error` findings (e.g. `javax.*`, `WebSecurityConfigurerAdapter`) and address `warning` findings unless an external ABI or concurrency constraint (e.g., CPU-bound bounded pool) requires keeping the existing pattern.
+Fix all `error` findings (e.g. `javax.*`, `WebSecurityConfigurerAdapter`) and address `warning` findings unless an external ABI or concurrency constraint (e.g., CPU-bound bounded pool) requires keeping the existing pattern. To enforce the same version-gated rules in CI without `mjg`, export a Semgrep Java AST ruleset via `mjg export --format semgrep --path . -o .semgrep/modern-java.yaml`.
