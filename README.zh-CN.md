@@ -27,7 +27,7 @@ LLM 训练数据中充斥着大量 **Java 8 与 Spring Boot 2.x** 时期的企�
 
 * **现代 Java & Spring Boot API 引导**：准确引导模型使用 `SecurityFilterChain` Lambda DSL、`RestClient`、`@HttpExchange`、`record`、`sealed interface`、`SequencedCollection` 与虚拟线程。
 * **版本感知安全门控**：自动解析 `pom.xml`、`build.gradle(.kts)`、`libs.versions.toml` 与 `.java-version`，确保 Java 8 / Boot 2.x 老项目不会触发误报。
-* **确定性编辑后护栏**：每次修改 `.java` 文件后仅需 **~31 ms**（零 LLM Token）即可完成扫描并拦截过时写法。
+* **确定性编辑后护栏**：每次修改 `.java` 文件后仅需 **~38 ms**（零 LLM Token）即可完成扫描并拦截过时写法。
 
 ---
 
@@ -70,7 +70,7 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 
 ### 完整规则与指南清单（17 篇指南 · 15 条可执行规则 · 13 条 Semgrep 规则）
 
-**15 条扫描规则中有 10 条在 `javac` 编译时完全静默（零警告）**，其余 5 条可在等待 10–30 秒 Maven/Gradle 构建前以 **~31 ms** 提前拦截。
+**15 条扫描规则中有 10 条在 `javac` 编译时完全静默（零警告）**，其余 5 条可在等待 10–30 秒 Maven/Gradle 构建前以 **~38 ms** 提前拦截。
 
 <details>
 <summary>查看所有指南、编译器重叠情况与版本门控规则</summary>
@@ -118,7 +118,7 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 1. **Activation**：编程助手在 Java/Spring Boot 任务中激活 `modern-java-guidance` Skill（`4.8 KB`）。
 2. **Version Detection**：运行 `mjg detect .` 解析 `pom.xml`、`build.gradle(.kts)`、`gradle/libs.versions.toml` 或 `.java-version`。
 3. **On-Demand Guide Fetch**：通过 `mjg search "<topic>"` 与 `mjg retrieve <ID>` 按需拉取精确的前后对比代码与注意事项。
-4. **Post-Edit Hook (`PostToolUse`)**：每次编辑 `.java` 后由 `mjg hook` 在 ~31 ms 内自动扫描并拦截或告警。
+4. **Post-Edit Hook (`PostToolUse`)**：每次编辑 `.java` 后由 `mjg hook` 在 ~38 ms 内自动扫描并拦截或告警。
 
 > [!TIP]
 > `mjg` CLI 仅依赖 Python 3.11+ 标准库，**100% 离线、本地运行**，无需网络请求、API Key 或第三方供应链依赖。
@@ -134,7 +134,7 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 | **`javac` / Maven / Gradle** | 每次构建 10–30 秒 | ❌ 仅编译错误与 `@Deprecated` | ⚠️ 内循环反馈偏慢 |
 | **IDE (IntelliJ IDEA)** | 人工编辑实时提示 | ⚠️ 部分支持（需要 GUI） | ❌ 无头 CLI Agent 不可用 |
 | **Semgrep (CI / PR 门禁)** | PR / CI 流水线 | ✅ 完整 Java AST 规则 | ✅ 可直接由 `mjg` 导出 |
-| **`mjg` `PostToolUse` Hook** | **每次修改 `.java` ~31 ms** | ✅ **15 条中有 10 条在 `javac` 下静默** + 提前拦截其余 5 条 | ✅ 原生支持 Claude Code & Antigravity |
+| **`mjg` `PostToolUse` Hook** | **每次修改 `.java` ~38 ms** | ✅ **15 条中有 10 条在 `javac` 下静默** + 提前拦截其余 5 条 | ✅ 原生支持 Claude Code & Antigravity |
 
 ### 在 Semgrep 中复用同一套规则（CI 与非 Agent 场景）
 
@@ -191,7 +191,7 @@ semgrep --config .semgrep/modern-java.yaml .
 | 任务 | 目标环境 | 无引导基线 | 引导 + `mjg` Hook |
 | :--- | :--- | :--- | :--- |
 | `EVAL-01` Spring Security 6 配置 | Java 21, Boot 3.3.4 | FAIL（检出 3 处） | **PASS**（0 告警） |
-| `EVAL-02` 同步 HTTP 客户端 | Java 21, Boot 3.3.4 | FAIL（检出 3 处） | **PASS**（0 告警） |
+| `EVAL-02` 同步 HTTP 客户端 | Java 21, Boot 3.3.4 | FAIL（检出 2 处） | **PASS**（0 告警） |
 | `EVAL-03` Jakarta EE 持久层与校验 | Java 21, Boot 3.3.4 | FAIL（检出 2 处） | **PASS**（0 告警） |
 | `EVAL-04` 阻塞 I/O 并发 | Java 21, Boot 3.3.4 | FAIL（检出 1 处） | **PASS**（0 告警） |
 | `EVAL-05` SequencedCollection & `java.time` | Java 21, Boot 3.3.4 | FAIL（检出 2 处） | **PASS**（0 告警） |
@@ -209,14 +209,14 @@ semgrep --config .semgrep/modern-java.yaml .
 
 > 在 `Santoshrt999/Java-Claude-Skills/examples` 实测：`mjg` 自动从 `pom.xml` 检测到 Java 21，并立即检出 `TradeProcessor.java:15` 的 `Executors.newFixedThreadPool(10)`（`[JAVA-010]`）。
 
-#### 3. 吞吐量与延迟（`python3 scripts/benchmark.py`，Apple Silicon）
+#### 3. 吞吐量与延迟（`python3 scripts/benchmark.py`，`v0.2.1`，Apple Silicon）
 
 | 测试项 | 规模 / 条件 | 实测结果 |
 | :--- | :--- | :--- |
-| **仓库扫描**（`detect` + `scan_target`） | 10 / 100 / 500 / 1,000 个 Java 文件 | **3.10 ms** / **22.84 ms** / **105.24 ms** / **183.40 ms**（`0.183 ms/file`） |
-| **构建文件解析** | `pom.xml` / `build.gradle.kts` / `.java-version` | **0.059 ms** / **0.043 ms** / **0.045 ms** |
-| **`PostToolUse` Hook（进程内）** | 单个 `.java` 文件（50 次） | **p50 0.257 ms** · p95 0.317 ms · max 0.373 ms |
-| **CLI 子进程端到端延迟（`mjg hook`）** | 完整进程启动（10 次） | **中位数 31.0 ms**（30.5–86.3 ms） |
+| **仓库扫描**（`detect` + `scan_target`） | 10 / 100 / 500 / 1,000 个 Java 文件 | **3.96 ms** / **29.23 ms** / **156.78 ms** / **324.54 ms**（`0.325 ms/file`） |
+| **构建文件解析** | `pom.xml` / `build.gradle.kts` / `.java-version` | **0.072 ms** / **0.060 ms** / **0.186 ms** |
+| **`PostToolUse` Hook（进程内）** | 单个 `.java` 文件（50 次） | **p50 0.407 ms** · p95 0.932 ms · max 1.019 ms |
+| **CLI 子进程端到端延迟（`mjg hook`）** | 完整进程启动（10 次） | **中位数 37.7 ms**（35.9–66.2 ms） |
 
 ---
 

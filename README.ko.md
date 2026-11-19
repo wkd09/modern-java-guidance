@@ -27,7 +27,7 @@ LLM 학습 데이터에는 과거 **Java 8 및 Spring Boot 2.x** 시절의 엔�
 
 * **모던 Java & Spring Boot API 유도**: `SecurityFilterChain` Lambda DSL, `RestClient`, `@HttpExchange`, `record`, `sealed interface`, `SequencedCollection`, Virtual Threads로 정확히 안내합니다.
 * **버전 인식 안전성**: `pom.xml`, `build.gradle(.kts)`, `libs.versions.toml`, `.java-version`을 감지해 Java 8 / Boot 2.x 레거시 프로젝트에는 오탐 경고를 띄우지 않습니다.
-* **결정론적 Post-Edit 가드레일**: `.java` 파일이 수정될 때마다 **약 31 ms** 만에(LLM 토큰 0) 자동 스캔해 레거시 회귀를 즉시 차단·경고합니다.
+* **결정론적 Post-Edit 가드레일**: `.java` 파일이 수정될 때마다 **약 38 ms** 만에(LLM 토큰 0) 자동 스캔해 레거시 회귀를 즉시 차단·경고합니다.
 
 ---
 
@@ -70,7 +70,7 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 
 ### 전체 목록 (온디맨드 가이드 17종 · 스캐너 규칙 15종 · Semgrep 13종)
 
-**활성 규칙 15개 중 10개는 `javac`가 경고 없이 통과시키는 침묵(silent) 패턴**이며, 나머지 5개도 10–30초짜리 Maven/Gradle 빌드 전에 **~31 ms** 만에 즉시 차단합니다.
+**활성 규칙 15개 중 10개는 `javac`가 경고 없이 통과시키는 침묵(silent) 패턴**이며, 나머지 5개도 10–30초짜리 Maven/Gradle 빌드 전에 **~38 ms** 만에 즉시 차단합니다.
 
 <details>
 <summary>모든 가이드, 컴파일러 중복 여부, 및 버전 게이팅 규칙 보기</summary>
@@ -118,7 +118,7 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 1. **Activation**: Java/Spring Boot 작업 시 에이전트가 `modern-java-guidance` 스킬(`4.8 KB`)을 활성화합니다.
 2. **Version Detection**: `mjg detect .`로 `pom.xml`, `build.gradle(.kts)`, `gradle/libs.versions.toml`, `.java-version`을 파싱합니다.
 3. **On-Demand Guide Fetch**: `mjg search "<topic>"`와 `mjg retrieve <ID>`로 필요한 Before/After 패턴과 주의사항만 컨텍스트에 불러옵니다.
-4. **Post-Edit Hook (`PostToolUse`)**: `.java` 파일이 수정될 때마다 `mjg hook`이 ~31 ms 만에 실행되어 레거시 회귀를 차단·경고합니다.
+4. **Post-Edit Hook (`PostToolUse`)**: `.java` 파일이 수정될 때마다 `mjg hook`이 ~38 ms 만에 실행되어 레거시 회귀를 차단·경고합니다.
 
 > [!TIP]
 > `mjg` CLI는 Python 3.11+ 표준 라이브러리만으로 **100% 오프라인·로컬 환경**에서 동작하며 외부 네트워크 호출이나 API 키, 서드파티 의존성이 전혀 없습니다.
@@ -134,7 +134,7 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 | **`javac` / Maven / Gradle** | 빌드당 10–30초 | ❌ 컴파일 에러 및 `@Deprecated`만 검출 | ⚠️ 내부 편집 루프에 쓰기엔 느림 |
 | **IDE (IntelliJ IDEA)** | 사람 편집 시 실시간 | ⚠️ 부분 지원 (GUI 환경 필요) | ❌ 헤드리스 CLI 에이전트에서 사용 불가 |
 | **Semgrep (CI / PR 게이트)** | PR / CI 파이프라인 | ✅ Java AST 기반 정밀 분석 | ✅ `mjg`에서 규칙 바로 내보내기 가능 |
-| **`mjg` `PostToolUse` 훅** | **`.java` 수정당 ~31 ms** | ✅ **15개 중 10개가 `javac` 미검출 규칙** + 나머지 5개 빌드 전 즉시 차단 | ✅ Claude Code & Antigravity 네이티브 훅 |
+| **`mjg` `PostToolUse` 훅** | **`.java` 수정당 ~38 ms** | ✅ **15개 중 10개가 `javac` 미검출 규칙** + 나머지 5개 빌드 전 즉시 차단 | ✅ Claude Code & Antigravity 네이티브 훅 |
 
 ### Semgrep 규칙으로 CI 및 일반 워크플로우에서도 재사용하기
 
@@ -191,7 +191,7 @@ semgrep --config .semgrep/modern-java.yaml .
 | 태스크 | 타겟 환경 | 비유도 베이스라인 | 가이드 + `mjg` 훅 |
 | :--- | :--- | :--- | :--- |
 | `EVAL-01` Spring Security 6 설정 | Java 21, Boot 3.3.4 | FAIL (3건 검출) | **PASS** (0건) |
-| `EVAL-02` 동기 HTTP 클라이언트 | Java 21, Boot 3.3.4 | FAIL (3건 검출) | **PASS** (0건) |
+| `EVAL-02` 동기 HTTP 클라이언트 | Java 21, Boot 3.3.4 | FAIL (2건 검출) | **PASS** (0건) |
 | `EVAL-03` Jakarta EE 영속성/검증 | Java 21, Boot 3.3.4 | FAIL (2건 검출) | **PASS** (0건) |
 | `EVAL-04` 블로킹 I/O 동시성 | Java 21, Boot 3.3.4 | FAIL (1건 검출) | **PASS** (0건) |
 | `EVAL-05` SequencedCollection & `java.time` | Java 21, Boot 3.3.4 | FAIL (2건 검출) | **PASS** (0건) |
@@ -209,14 +209,14 @@ semgrep --config .semgrep/modern-java.yaml .
 
 > `Santoshrt999/Java-Claude-Skills/examples` 실측: `mjg`가 `pom.xml`에서 Java 21을 자동 감지하고 `TradeProcessor.java:15`의 `Executors.newFixedThreadPool(10)` (`[JAVA-010]`)을 즉시 검출했습니다.
 
-#### 3. 처리량 및 지연시간 (`python3 scripts/benchmark.py`, Apple Silicon)
+#### 3. 처리량 및 지연시간 (`python3 scripts/benchmark.py`, `v0.2.1`, Apple Silicon)
 
 | 벤치마크 | 규모 / 조건 | 실측 결과 |
 | :--- | :--- | :--- |
-| **저장소 스캔** (`detect` + `scan_target`) | 10 / 100 / 500 / 1,000개 Java 파일 | **3.10 ms** / **22.84 ms** / **105.24 ms** / **183.40 ms** (`0.183 ms/file`) |
-| **빌드 파일 버전 감지** | `pom.xml` / `build.gradle.kts` / `.java-version` | **0.059 ms** / **0.043 ms** / **0.045 ms** |
-| **`PostToolUse` 훅 (인프로세스)** | 단일 `.java` 파일 (50회) | **p50 0.257 ms** · p95 0.317 ms · max 0.373 ms |
-| **CLI 서브프로세스 E2E (`mjg hook`)** | 전체 프로세스 실행 (10회) | **중앙값 31.0 ms** (30.5–86.3 ms) |
+| **저장소 스캔** (`detect` + `scan_target`) | 10 / 100 / 500 / 1,000개 Java 파일 | **3.96 ms** / **29.23 ms** / **156.78 ms** / **324.54 ms** (`0.325 ms/file`) |
+| **빌드 파일 버전 감지** | `pom.xml` / `build.gradle.kts` / `.java-version` | **0.072 ms** / **0.060 ms** / **0.186 ms** |
+| **`PostToolUse` 훅 (인프로세스)** | 단일 `.java` 파일 (50회) | **p50 0.407 ms** · p95 0.932 ms · max 1.019 ms |
+| **CLI 서브프로세스 E2E (`mjg hook`)** | 전체 프로세스 실행 (10회) | **중앙값 37.7 ms** (35.9–66.2 ms) |
 
 ---
 

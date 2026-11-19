@@ -51,7 +51,7 @@ Even if a model knows a modern API exists, passive markdown skills alone cannot 
 
 * **Modern Java & Spring Boot APIs**: Steering models toward `SecurityFilterChain` Lambda DSL, `RestClient`, `@HttpExchange`, `record`, `sealed interface`, `SequencedCollection`, and Virtual Threads.
 * **Version-Aware Safety**: Detecting `pom.xml`, `build.gradle(.kts)`, `libs.versions.toml`, and `.java-version` so legacy Java 8 / Boot 2.x projects never receive false-positive warnings.
-* **Deterministic Post-Edit Guardrails**: Scanning every edited `.java` file in **~31 ms** (zero LLM tokens) to catch and block legacy regressions before they land.
+* **Deterministic Post-Edit Guardrails**: Scanning every edited `.java` file in **~38 ms** (zero LLM tokens) to catch and block legacy regressions before they land.
 
 ---
 
@@ -70,7 +70,7 @@ We cover modern **Java 17 / 21 / 25+** and **Spring Boot 3.x+** patterns. The sk
 
 ### The full list (17 guides, 15 active scanner rules & 13 Semgrep exports)
 
-**10 of the 15 active rules are silent in `javac`** (valid code/configs that build with zero compiler warnings), while the other 5 catch broken/deprecated Boot 3 APIs in **~31 ms** before waiting on a 10–30 s Maven/Gradle build.
+**10 of the 15 active rules are silent in `javac`** (valid code/configs that build with zero compiler warnings), while the other 5 catch broken/deprecated Boot 3 APIs in **~38 ms** before waiting on a 10–30 s Maven/Gradle build.
 
 <details>
 <summary>Browse all guides, compiler overlap, & version-gated rules</summary>
@@ -118,7 +118,7 @@ We cover modern **Java 17 / 21 / 25+** and **Spring Boot 3.x+** patterns. The sk
 1. **Activation**: The coding agent activates the `modern-java-guidance` skill (`4.8 KB`) for Java / Spring Boot tasks.
 2. **Version Detection**: Runs `mjg detect .` to inspect `pom.xml`, `build.gradle(.kts)`, `gradle/libs.versions.toml`, or `.java-version`.
 3. **On-Demand Guide Fetch**: Runs `mjg search "<topic>"` and `mjg retrieve <ID>` to pull exact Before/After code patterns and caveats into context without loading bloated markdown files.
-4. **Post-Edit Hook (`PostToolUse`)**: Runs `mjg hook` automatically after every `.java` edit (~31 ms) and blocks or warns on legacy regressions.
+4. **Post-Edit Hook (`PostToolUse`)**: Runs `mjg hook` automatically after every `.java` edit (~38 ms) and blocks or warns on legacy regressions.
 
 > [!TIP]
 > The CLI works **100% offline, private, and local** using only the Python 3.11+ standard library—no network calls, no API keys, and zero third-party supply-chain dependencies.
@@ -134,7 +134,7 @@ We cover modern **Java 17 / 21 / 25+** and **Spring Boot 3.x+** patterns. The sk
 | **`javac` / Maven / Gradle** | 10–30 s per build | ❌ Only compile errors & `@Deprecated` | ⚠️ Slow inner-loop feedback |
 | **IDE (IntelliJ IDEA)** | Real-time for humans | ⚠️ Partial (requires interactive GUI) | ❌ Not available to headless CLI agents |
 | **Semgrep (CI / PR gate)** | PR / CI pipeline | ✅ Full Java AST rules | ✅ Exported directly from `mjg` |
-| **`mjg` `PostToolUse` Hook** | **~31 ms per `.java` edit** | ✅ **10/15 rules are silent in `javac`** + pre-build catch for the other 5 | ✅ Native Claude Code & Antigravity hooks |
+| **`mjg` `PostToolUse` Hook** | **~38 ms per `.java` edit** | ✅ **10/15 rules are silent in `javac`** + pre-build catch for the other 5 | ✅ Native Claude Code & Antigravity hooks |
 
 ### Use the Same Rules in Semgrep (CI & Non-Agent Workflows)
 
@@ -203,7 +203,7 @@ Modeled after `GoogleChrome/modern-web-guidance`, we maintain an automated asser
 | Task | Target | Unguided Baseline | Guided + `mjg` Hook |
 | :--- | :--- | :--- | :--- |
 | `EVAL-01` Spring Security 6 Config | Java 21, Boot 3.3.4 | FAIL (3 findings) | **PASS** (0 findings) |
-| `EVAL-02` Synchronous HTTP Client | Java 21, Boot 3.3.4 | FAIL (3 findings) | **PASS** (0 findings) |
+| `EVAL-02` Synchronous HTTP Client | Java 21, Boot 3.3.4 | FAIL (2 findings) | **PASS** (0 findings) |
 | `EVAL-03` Jakarta EE Persistence/Validation | Java 21, Boot 3.3.4 | FAIL (2 findings) | **PASS** (0 findings) |
 | `EVAL-04` Blocking I/O Concurrency | Java 21, Boot 3.3.4 | FAIL (1 finding) | **PASS** (0 findings) |
 | `EVAL-05` SequencedCollection & `java.time` | Java 21, Boot 3.3.4 | FAIL (2 findings) | **PASS** (0 findings) |
@@ -221,14 +221,14 @@ Modeled after `GoogleChrome/modern-web-guidance`, we maintain an automated asser
 
 > Verified on `Santoshrt999/Java-Claude-Skills/examples`: `mjg` automatically detected Java 21 from `pom.xml` and flagged `TradeProcessor.java:15` (`Executors.newFixedThreadPool(10)` → `[JAVA-010]`).
 
-#### 3. Throughput & Latency (`python3 scripts/benchmark.py`, Apple Silicon)
+#### 3. Throughput & Latency (`python3 scripts/benchmark.py`, `v0.2.1`, Apple Silicon)
 
 | Benchmark | Workload | Result |
 | :--- | :--- | :--- |
-| **Repo scan** (`detect` + `scan_target`) | 10 / 100 / 500 / 1,000 Java files | **3.10 ms** / **22.84 ms** / **105.24 ms** / **183.40 ms** (`0.183 ms/file`) |
-| **Build file detection** | `pom.xml` / `build.gradle.kts` / `.java-version` | **0.059 ms** / **0.043 ms** / **0.045 ms** |
-| **`PostToolUse` hook (in-process)** | Single `.java` file (50 runs) | **p50 0.257 ms** · p95 0.317 ms · max 0.373 ms |
-| **CLI subprocess E2E (`mjg hook`)** | Full process spawn (10 runs) | **31.0 ms median** (30.5–86.3 ms) |
+| **Repo scan** (`detect` + `scan_target`) | 10 / 100 / 500 / 1,000 Java files | **3.96 ms** / **29.23 ms** / **156.78 ms** / **324.54 ms** (`0.325 ms/file`) |
+| **Build file detection** | `pom.xml` / `build.gradle.kts` / `.java-version` | **0.072 ms** / **0.060 ms** / **0.186 ms** |
+| **`PostToolUse` hook (in-process)** | Single `.java` file (50 runs) | **p50 0.407 ms** · p95 0.932 ms · max 1.019 ms |
+| **CLI subprocess E2E (`mjg hook`)** | Full process spawn (10 runs) | **37.7 ms median** (35.9–66.2 ms) |
 
 ---
 
