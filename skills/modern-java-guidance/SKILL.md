@@ -26,7 +26,8 @@ mjg detect .
 - **Java 21+ (or greenfield code)**: Use Java 21+ idioms including Pattern Matching for `switch`, Record Patterns, `SequencedCollection` (`getFirst()`, `getLast()`, `reversed()`), and Virtual Threads (`Executors.newVirtualThreadPerTaskExecutor()`).
 - **Spring Boot 2.x**: Keep `javax.*` and existing Spring Security 5 / `RestTemplate` APIs unless migrating to Boot 3.
 - **Spring Boot 3.0–3.1**: Use `jakarta.*`, `SecurityFilterChain` + Lambda DSL + `requestMatchers()`, and constructor injection. (`RestClient` is not available yet; keep `WebClient` or `RestTemplate`.)
-- **Spring Boot 3.2+**: Also prefer `RestClient` / `@HttpExchange` over `RestTemplate`.
+- **Spring Boot 3.2–3.3**: Also prefer `RestClient` / `@HttpExchange` over `RestTemplate`, and extracted/layered JARs (`-Djarmode=tools`) for containers.
+- **Spring Boot 3.4+**: Also replace deprecated `@MockBean` / `@SpyBean` with `@MockitoBean` / `@MockitoSpyBean`.
 
 ---
 
@@ -68,4 +69,4 @@ After writing or editing `.java` files, run the version-aware scanner (or let th
 mjg check src/
 ```
 
-Fix all `error` findings (e.g. `javax.*`, `WebSecurityConfigurerAdapter`) and address `warning` findings unless an external ABI or concurrency constraint (e.g., CPU-bound bounded pool) requires keeping the existing pattern. To enforce the same version-gated rules in CI without `mjg`, export a Semgrep Java AST ruleset via `mjg export --format semgrep --path . -o .semgrep/modern-java.yaml`.
+Fix all `error` findings (e.g. `javax.*`, `WebSecurityConfigurerAdapter`) and address `warning` findings unless an external ABI or concurrency constraint (e.g., CPU-bound bounded pool) requires keeping the existing pattern (suppress intentional exceptions inline with `// mjg:ignore <RULE-ID>`). To enforce the same version-gated rules in CI without `mjg`, export a Semgrep Java AST ruleset via `mjg export --format semgrep --path . -o .semgrep/modern-java.yaml`.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "modern-java-guidance"
-version = "0.2.0"
+version = "0.2.1"
 description = "Version-aware CLI scanner, Post-Edit Hook, and Agent Skill that stops AI coding agents from generating legacy Java 8 and Spring Boot 2.x code."
 readme = "README.md"
 license = { text = "MIT" }
@@ -17,6 +17,9 @@ modern-java-guidance = "modern_java_guidance.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+modern_java_guidance = ["bundled_skill/*.md", "bundled_skill/**/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

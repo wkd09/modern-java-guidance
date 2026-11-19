@@ -31,7 +31,8 @@ SEMGREP_RULES: tuple[SemgrepRuleSpec, ...] = (
         pattern_yaml="""    pattern-either:
       - pattern: new Date()
       - pattern: new java.util.Date()
-      - pattern: new SimpleDateFormat(...)""",
+      - pattern: new SimpleDateFormat(...)
+      - pattern: Calendar.getInstance(...)""",
     ),
     SemgrepRuleSpec(
         rule_id="JAVA-002",
@@ -57,6 +58,16 @@ SEMGREP_RULES: tuple[SemgrepRuleSpec, ...] = (
       - pattern: String.format($FMT, ...)
       - pattern-not: String.format((java.util.Locale $LOC), ...)
       - pattern-not: String.format(Locale.$LOC, ...)""",
+    ),
+    SemgrepRuleSpec(
+        rule_id="JAVA-004",
+        semgrep_id="mjg-java-004-collectors-tolist",
+        min_java=16,
+        min_boot=None,
+        severity="INFO",
+        caught_by_javac="no",
+        message="Verbose Collectors.toList() on Java 16+. Use Stream.toList() (or Collectors.toCollection(ArrayList::new) if a mutable list is required).",
+        pattern_yaml="""    pattern: $STREAM.collect(Collectors.toList())""",
     ),
     SemgrepRuleSpec(
         rule_id="JAVA-010",
@@ -88,7 +99,7 @@ SEMGREP_RULES: tuple[SemgrepRuleSpec, ...] = (
         severity="ERROR",
         caught_by_javac="compile-error",
         message="Legacy javax.* EE import in Spring Boot 3.x+. Replace with jakarta.* (Jakarta EE 10).",
-        pattern_yaml="""    pattern-regex: '^\\s*import\\s+javax\\.(persistence|validation|servlet|annotation|transaction)\\.'""",
+        pattern_yaml="""    pattern-regex: '^\\s*import\\s+javax\\.(persistence|validation|servlet|annotation|transaction|inject|mail|xml\\.bind|ws\\.rs)\\.'""",
     ),
     SemgrepRuleSpec(
         rule_id="BOOT-002",
@@ -153,6 +164,22 @@ SEMGREP_RULES: tuple[SemgrepRuleSpec, ...] = (
         caught_by_javac="deprecated",
         message="Deprecated non-lambda .csrf().disable() syntax. Keep CSRF enabled by default; only use .csrf(AbstractHttpConfigurer::disable) for non-browser-attached credentials (e.g., Bearer JWT).",
         pattern_yaml="""    pattern: $HTTP.csrf().disable()""",
+    ),
+    SemgrepRuleSpec(
+        rule_id="BOOT-008",
+        semgrep_id="mjg-boot-008-mockbean-deprecated",
+        min_java=17,
+        min_boot=(3, 4, 0),
+        severity="WARNING",
+        caught_by_javac="deprecated",
+        message="@MockBean / @SpyBean are deprecated in Spring Boot 3.4+. Use @MockitoBean / @MockitoSpyBean (org.springframework.test.context.bean.override.mockito.*).",
+        pattern_yaml="""    pattern-either:
+      - pattern: |
+          @MockBean
+          $TYPE $FIELD;
+      - pattern: |
+          @SpyBean
+          $TYPE $FIELD;""",
     ),
 )
 

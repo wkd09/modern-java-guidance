@@ -8,11 +8,43 @@ import shutil
 import sys
 from pathlib import Path
 
+from modern_java_guidance import __version__
 from modern_java_guidance.detector import ProjectProfile, _parse_boot_tuple, detect_project
 from modern_java_guidance.exporters import export_semgrep_yaml
 from modern_java_guidance.guides import retrieve_guide, search_guides
 from modern_java_guidance.hook import run_hook
 from modern_java_guidance.scanner import scan_target
+
+
+def _resolve_skill_source() -> Path | None:
+    """Locate the modern-java-guidance skill directory (repo checkout or wheel-bundled copy)."""
+    pkg_bundled = Path(__file__).resolve().parent / "bundled_skill"
+    repo_skill = Path(__file__).resolve().parent.parent.parent / "skills" / "modern-java-guidance"
+    for candidate in (repo_skill, pkg_bundled):
+        if (candidate / "SKILL.md").is_file():
+            return candidate
+    return None
+
+
+def _apply_profile_overrides(
+    profile: ProjectProfile,
+    java_override: int | None,
+    boot_override: str | None,
+) -> ProjectProfile | None:
+    if java_override is None and boot_override is None:
+        return profile
+    java_ver = java_override if java_override is not None else profile.java_version
+    if boot_override is not None:
+        boot_ver = _parse_boot_tuple(boot_override)
+        if boot_ver is None:
+            print(
+                f"Error: invalid --boot version '{boot_override}'. Expected format like '3.3.0' or '3.4'.",
+                file=sys.stderr,
+            )
+            return None
+    else:
+        boot_ver = profile.spring_boot_version
+    return ProjectProfile(java_ver, boot_ver, profile.source_file, profile.uses_spring_security)
 
 
 def _cmd_detect(args: argparse.Namespace) -> int:
@@ -35,11 +67,9 @@ def _cmd_check(args: argparse.Namespace) -> int:
         print(f"Error: target does not exist: {target}", file=sys.stderr)
         return 2
 
-    profile = detect_project(target)
-    if args.java is not None or args.boot is not None:
-        java_ver = args.java if args.java is not None else profile.java_version
-        boot_ver = _parse_boot_tuple(args.boot) if args.boot is not None else profile.spring_boot_version
-        profile = ProjectProfile(java_ver, boot_ver, profile.source_file, profile.uses_spring_security)
+    profile = _apply_profile_overrides(detect_project(target), args.java, args.boot)
+    if profile is None:
+        return 2
 
     findings = scan_target(target, profile)
     if args.json:
@@ -69,7 +99,7 @@ def _cmd_check(args: argparse.Namespace) -> int:
 
 
 def _cmd_hook(args: argparse.Namespace) -> int:
-    code, stdout_json, stderr_msg = run_hook(args.format)
+    code, stdout_json, stderr_msg = run_hook(args.format, strict=args.strict)
     if stdout_json:
         print(stdout_json)
     if stderr_msg:
@@ -113,11 +143,9 @@ def _cmd_retrieve(args: argparse.Namespace) -> int:
 
 
 def _cmd_export(args: argparse.Namespace) -> int:
-    profile = detect_project(Path(args.path))
-    if args.java is not None or args.boot is not None:
-        java_ver = args.java if args.java is not None else profile.java_version
-        boot_ver = _parse_boot_tuple(args.boot) if args.boot is not None else profile.spring_boot_version
-        profile = ProjectProfile(java_ver, boot_ver, profile.source_file, profile.uses_spring_security)
+    profile = _apply_profile_overrides(detect_project(Path(args.path)), args.java, args.boot)
+    if profile is None:
+        return 2
 
     content = export_semgrep_yaml(profile)
     if args.output:
@@ -130,21 +158,33 @@ def _cmd_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def _copy_skill(skill_src: Path, dest_dir: Path) -> None:
+    if dest_dir.exists():
+        shutil.rmtree(dest_dir)
+    dest_dir.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(skill_src, dest_dir)
+
+
 def _cmd_setup(args: argparse.Namespace) -> int:
-    repo_root = Path(__file__).resolve().parent.parent.parent
-    skill_src = repo_root / "skills" / "modern-java-guidance"
+    skill_src = _resolve_skill_source()
     project_dir = Path(args.dir).resolve()
 
-    if args.target in ("antigravity", "all"):
-        # 1. Install global Antigravity skill if bundled in repo
-        global_skill = Path.home() / ".gemini" / "config" / "skills" / "modern-java-guidance"
-        if skill_src.is_dir():
-            if global_skill.exists():
-                shutil.rmtree(global_skill)
-            shutil.copytree(skill_src, global_skill)
-            print(f"Installed Antigravity global skill -> {global_skill}")
+    if skill_src is None:
+        print(
+            "Warning: bundled skill assets not found; hooks will be configured without copying SKILL.md.",
+            file=sys.stderr,
+        )
 
-        # 2. Write .agents/hooks.json in target project
+    if args.target in ("antigravity", "all"):
+        if skill_src is not None:
+            global_skill = (
+                Path(args.skill_dir).resolve()
+                if args.skill_dir
+                else Path.home() / ".gemini" / "config" / "skills" / "modern-java-guidance"
+            )
+            _copy_skill(skill_src, global_skill)
+            print(f"Installed Antigravity skill -> {global_skill}")
+
         agents_dir = project_dir / ".agents"
         agents_dir.mkdir(parents=True, exist_ok=True)
         hooks_path = agents_dir / "hooks.json"
@@ -157,7 +197,7 @@ def _cmd_setup(args: argparse.Namespace) -> int:
         hooks_data["modern-java-guidance"] = {
             "PostToolUse": [
                 {
-                    "matcher": "write_to_file|replace_file_content|multi_replace_file_content",
+                    "matcher": "write_file|edit_file|write_to_file|replace_file_content|multi_replace_file_content",
                     "hooks": [
                         {
                             "type": "command",
@@ -172,6 +212,11 @@ def _cmd_setup(args: argparse.Namespace) -> int:
         print(f"Configured Antigravity PostToolUse hook -> {hooks_path}")
 
     if args.target in ("claude", "all"):
+        if skill_src is not None:
+            claude_skill = project_dir / ".claude" / "skills" / "modern-java-guidance"
+            _copy_skill(skill_src, claude_skill)
+            print(f"Installed Claude Code skill -> {claude_skill}")
+
         claude_dir = project_dir / ".claude"
         claude_dir.mkdir(parents=True, exist_ok=True)
         settings_path = claude_dir / "settings.json"
@@ -207,6 +252,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="mjg",
         description="Modern Java (21+) & Spring Boot (3.x+) detector, linter, and Post-Edit Hook.",
     )
+    parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_detect = sub.add_parser("detect", help="Detect Java and Spring Boot versions in a project.")
@@ -214,16 +260,17 @@ def build_parser() -> argparse.ArgumentParser:
     p_detect.add_argument("--json", action="store_true", help="Output JSON")
     p_detect.set_defaults(func=_cmd_detect)
 
-    p_check = sub.add_parser("check", help="Scan .java file(s) for legacy Java/Spring Boot patterns.")
-    p_check.add_argument("target", help="Java file or directory to scan")
+    p_check = sub.add_parser("check", help="Scan .java and Boot config file(s) for legacy patterns.")
+    p_check.add_argument("target", help="File or directory to scan")
     p_check.add_argument("--java", type=int, help="Override detected Java version")
     p_check.add_argument("--boot", type=str, help="Override detected Spring Boot version (e.g. 3.4.0)")
     p_check.add_argument("--json", action="store_true", help="Output JSON")
-    p_check.add_argument("--strict", action="store_true", help="Exit non-zero on warnings too")
+    p_check.add_argument("--strict", action="store_true", help="Exit non-zero on warnings/info too")
     p_check.set_defaults(func=_cmd_check)
 
     p_hook = sub.add_parser("hook", help="Run as a PostToolUse hook reading JSON from stdin.")
     p_hook.add_argument("--format", choices=("antigravity", "claude"), default="antigravity")
+    p_hook.add_argument("--strict", action="store_true", help="Block Claude Code on warnings/info as well as errors")
     p_hook.set_defaults(func=_cmd_hook)
 
     p_search = sub.add_parser("search", help="Search modern Java/Spring Boot pattern guides by keyword.")
@@ -240,13 +287,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_export.add_argument("--format", choices=("semgrep",), default="semgrep", help="Target format (default: semgrep)")
     p_export.add_argument("--path", default=".", help="Project path for auto-detecting versions (default: .)")
     p_export.add_argument("--java", type=int, help="Override detected Java version")
-    p_export.add_argument("--boot", type=str, help="Override detected Spring Boot version (e.g. 3.3.0)")
+    p_export.add_argument("--boot", type=str, help="Override detected Spring Boot version (e.g. 3.4.0)")
     p_export.add_argument("-o", "--output", type=str, help="Write exported rules to file instead of stdout")
     p_export.set_defaults(func=_cmd_export)
 
-    p_setup = sub.add_parser("setup", help="Install global skill and configure PostToolUse hooks.")
+    p_setup = sub.add_parser("setup", help="Install skill files and configure PostToolUse hooks.")
     p_setup.add_argument("--target", choices=("antigravity", "claude", "all"), default="antigravity")
-    p_setup.add_argument("--dir", default=".", help="Target project directory for hooks config")
+    p_setup.add_argument("--dir", default=".", help="Target project directory for hooks/skills")
+    p_setup.add_argument("--skill-dir", type=str, help="Override Antigravity skill install destination")
     p_setup.set_defaults(func=_cmd_setup)
 
     return parser

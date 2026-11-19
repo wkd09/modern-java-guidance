@@ -57,7 +57,7 @@ Even if a model knows a modern API exists, passive markdown skills alone cannot 
 
 ## What's Included?
 
-We cover modern **Java 17 / 21 / 25+** and **Spring Boot 3.x+** patterns. The skill is designed to be token-efficient: `SKILL.md` is only **4.1 KB**, while detailed Before/After guides are fetched on demand via `mjg search` and `mjg retrieve`.
+We cover modern **Java 17 / 21 / 25+** and **Spring Boot 3.x+** patterns. The skill is designed to be token-efficient: `SKILL.md` is only **4.8 KB**, while detailed Before/After guides are fetched on demand via `mjg search` and `mjg retrieve`.
 
 ### Core Disciplines
 
@@ -68,9 +68,9 @@ We cover modern **Java 17 / 21 / 25+** and **Spring Boot 3.x+** patterns. The sk
 * **🏛️ Jakarta EE 10 & Clean DI**: `jakarta.*` migration (`persistence`, `validation`, `servlet`), constructor injection over `@Autowired` field injection, and RFC 9457 `ProblemDetail`.
 * **🛡️ Legacy Preservation**: Automatically gates rules by detected `pom.xml` / `build.gradle(.kts)` versions so Java 8/11 and Boot 2.x repos stay untouched.
 
-### The full list (13 guides, 11 active scanner rules & Semgrep exports)
+### The full list (17 guides, 15 active scanner rules & 13 Semgrep exports)
 
-**7 of the 11 active rules are silent in `javac`** (valid code that compiles with zero warnings), while the other 4 catch broken/deprecated Boot 3 APIs in **~31 ms** before waiting on a 10–30 s Maven/Gradle build.
+**10 of the 15 active rules are silent in `javac`** (valid code/configs that build with zero compiler warnings), while the other 5 catch broken/deprecated Boot 3 APIs in **~31 ms** before waiting on a 10–30 s Maven/Gradle build.
 
 <details>
 <summary>Browse all guides, compiler overlap, & version-gated rules</summary>
@@ -79,9 +79,10 @@ We cover modern **Java 17 / 21 / 25+** and **Spring Boot 3.x+** patterns. The sk
 
 | Rule / Guide | Min Version | Caught by `javac`? | Legacy → Modern Replacement |
 | :--- | :--- | :--- | :--- |
-| [`JAVA-001`](./src/modern_java_guidance/guides.py) | Java 8+ (scan 16+) | **No (silent)** | `new Date()` / `SimpleDateFormat` → `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`) |
+| [`JAVA-001`](./src/modern_java_guidance/guides.py) | Java 8+ (scan 16+) | **No (silent)** | `new Date()` / `Calendar.getInstance()` / `SimpleDateFormat` → `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`) |
 | [`JAVA-002`](./src/modern_java_guidance/guides.py) | Java 9+ (scan 16+) | **No (silent)** | `Collections.unmodifiableList(Arrays.asList(...))` → `List.of` / `Set.of` / `Map.of` |
 | [`JAVA-003`](./src/modern_java_guidance/guides.py) | Java 15+ (scan 16+) | **No (silent)** | `String.format(...)` (without explicit `Locale`) → `"..." .formatted(...)` |
+| [`JAVA-004`](./src/modern_java_guidance/guides.py) | Java 16+ | **No (silent)** | `.collect(Collectors.toList())` → `Stream.toList()` |
 | [`JAVA-010`](./src/modern_java_guidance/guides.py) | Java 21+ | **No (silent)** | `Executors.newFixedThreadPool` / `newCachedThreadPool` → `Executors.newVirtualThreadPerTaskExecutor()` (blocking I/O) |
 | [`JAVA-011`](./src/modern_java_guidance/guides.py) | Java 21+ | **No (silent)** | `list.get(list.size() - 1)` → `SequencedCollection.getLast()` |
 | [`JAVA-012`](./src/modern_java_guidance/guides.py) | Java 21+ *(guide)* | **No (silent)** | Verbose POJOs / `instanceof` casts → `record`, `sealed interface`, Pattern Matching for `switch` |
@@ -90,27 +91,31 @@ We cover modern **Java 17 / 21 / 25+** and **Spring Boot 3.x+** patterns. The sk
 
 | Rule / Guide | Min Version | Caught by `javac`? | Legacy → Modern Replacement |
 | :--- | :--- | :--- | :--- |
-| [`BOOT-001`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | Compile error *(build-time)* | `javax.{persistence,validation,servlet,annotation,transaction}.*` → `jakarta.*` |
+| [`BOOT-001`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | Compile error *(build-time)* | `javax.{persistence,validation,servlet,annotation,transaction,inject,mail,xml.bind,ws.rs}.*` → `jakarta.*` |
 | [`BOOT-002`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | Compile error *(build-time)* | `extends WebSecurityConfigurerAdapter` → `@Bean SecurityFilterChain` |
 | [`BOOT-003`](./src/modern_java_guidance/guides.py) | Boot 3.2+ | **No (silent)** | `RestTemplate` / `RestTemplateBuilder` → `RestClient` or `@HttpExchange` |
-| [`BOOT-004`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | **No (silent)** | `@Autowired` field injection → constructor injection (`private final`) |
+| [`BOOT-004`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | **No (silent)** | `@Autowired` field injection (skips constructors & test classes) → constructor injection (`private final`) |
 | [`BOOT-005`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | Compile error *(build-time)* | `.antMatchers()` / `.mvcMatchers()` / `.authorizeRequests()` → `.authorizeHttpRequests(a -> a.requestMatchers(...))` |
-| [`BOOT-006`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | `@Deprecated` *(build-time)* | `.csrf().disable()` → keep CSRF enabled by default; `.csrf(AbstractHttpConfigurer::disable)` only for non-browser credentials (e.g., Bearer JWT) |
+| [`BOOT-006`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | `@Deprecated` *(build-time)* | `.csrf().disable()` (single & multiline) → keep CSRF enabled by default; `.csrf(AbstractHttpConfigurer::disable)` only for non-browser credentials (e.g., Bearer JWT) |
 | [`BOOT-007`](./src/modern_java_guidance/guides.py) | Boot 3.0+ *(guide)* | **No (silent)** | Custom ad-hoc error payloads → RFC 9457 `ProblemDetail` in `@RestControllerAdvice` |
+| [`BOOT-008`](./src/modern_java_guidance/guides.py) | Boot 3.4+ | `@Deprecated` *(build-time)* | `@MockBean` / `@SpyBean` → `@MockitoBean` / `@MockitoSpyBean` |
+| [`BOOT-009`](./src/modern_java_guidance/guides.py) | Boot 3.0+ *(build file)* | **No (silent)** | `spring-cloud-starter-sleuth` → Micrometer Tracing + OpenTelemetry OTLP |
+| [`BOOT-010`](./src/modern_java_guidance/guides.py) | Boot 3.3+ *(Dockerfile)* | **No (silent)** | Unextracted fat-JAR `java -jar app.jar` → `-Djarmode=tools ... extract`, Buildpacks, or AppCDS |
 
 </details>
 
 ### Safe Adoption of Modern Features
 
-* **Version-Gated Execution**: Rules activate only when the project's detected Java and Spring Boot versions meet the rule's minimum threshold (`min_java`, `min_boot`).
-* **Comment-Aware Scanning**: Strips `//` and `/* ... */` comments (while preserving string literals) before scanning so commented notes never trigger false positives.
+* **Version-Gated & Multi-Module Safe**: Walks multi-module Maven (`pom.xml` + BOM `<dependencyManagement>`), Gradle (`build.gradle(.kts)` + `JavaVersion.VERSION_1_8` + `libs.versions.toml`), and `.java-version` so legacy repos stay untouched.
+* **Comment, String & Text-Block Aware**: Strips `//`, `/* ... */`, `"..."`, and `"""..."""` literals before scanning so docs, log messages, and comments never trigger false positives.
+* **Inline Suppression & Smart Hook Severity**: Suppress intentional exceptions with `// mjg:ignore JAVA-010` (or `// mjg:ignore`). Claude Code hooks hard-block on `error` findings and send non-blocking advisory context for `warning`/`info` (pass `--strict` to block all).
 * **Gotchas & Quirks**: Every guide retrieved via `mjg retrieve <ID>` includes a `## Caveat` section (e.g., do not use `record` for JPA `@Entity`, keep bounded pools for CPU-bound work, check `!isEmpty()` before `getLast()`).
 
 ---
 
 ## How It Works
 
-1. **Activation**: The coding agent activates the `modern-java-guidance` skill (`4.1 KB`) for Java / Spring Boot tasks.
+1. **Activation**: The coding agent activates the `modern-java-guidance` skill (`4.8 KB`) for Java / Spring Boot tasks.
 2. **Version Detection**: Runs `mjg detect .` to inspect `pom.xml`, `build.gradle(.kts)`, `gradle/libs.versions.toml`, or `.java-version`.
 3. **On-Demand Guide Fetch**: Runs `mjg search "<topic>"` and `mjg retrieve <ID>` to pull exact Before/After code patterns and caveats into context without loading bloated markdown files.
 4. **Post-Edit Hook (`PostToolUse`)**: Runs `mjg hook` automatically after every `.java` edit (~31 ms) and blocks or warns on legacy regressions.
@@ -129,14 +134,14 @@ We cover modern **Java 17 / 21 / 25+** and **Spring Boot 3.x+** patterns. The sk
 | **`javac` / Maven / Gradle** | 10–30 s per build | ❌ Only compile errors & `@Deprecated` | ⚠️ Slow inner-loop feedback |
 | **IDE (IntelliJ IDEA)** | Real-time for humans | ⚠️ Partial (requires interactive GUI) | ❌ Not available to headless CLI agents |
 | **Semgrep (CI / PR gate)** | PR / CI pipeline | ✅ Full Java AST rules | ✅ Exported directly from `mjg` |
-| **`mjg` `PostToolUse` Hook** | **~31 ms per `.java` edit** | ✅ **7/11 rules are silent in `javac`** + pre-build catch for the other 4 | ✅ Native Claude Code & Antigravity hooks |
+| **`mjg` `PostToolUse` Hook** | **~31 ms per `.java` edit** | ✅ **10/15 rules are silent in `javac`** + pre-build catch for the other 5 | ✅ Native Claude Code & Antigravity hooks |
 
 ### Use the Same Rules in Semgrep (CI & Non-Agent Workflows)
 
 You can run the bundled Java AST Semgrep ruleset directly in CI—or generate a version-gated ruleset tailored to your repository's `pom.xml` / `build.gradle(.kts)`:
 
 ```bash
-# Run the pre-generated Java 21 + Spring Boot 3.2+ Semgrep ruleset directly
+# Run the pre-generated Java 21 + Spring Boot 3.4+ Semgrep ruleset directly
 semgrep --config https://raw.githubusercontent.com/wkd09/modern-java-guidance/main/rules/semgrep/modern-java-boot3.yaml .
 
 # Or export a version-gated Semgrep ruleset matching your project's detected Java & Boot versions
@@ -144,7 +149,7 @@ mjg export --format semgrep --path . -o .semgrep/modern-java.yaml
 semgrep --config .semgrep/modern-java.yaml .
 ```
 
-All 11 Semgrep rules in [`rules/semgrep/modern-java-boot3.yaml`](./rules/semgrep/modern-java-boot3.yaml) are validated and unit-tested (`semgrep --validate` + `semgrep --test` against [`modern-java-boot3.java`](./rules/semgrep/modern-java-boot3.java)) in CI on every push.
+All 13 Semgrep Java AST rules in [`rules/semgrep/modern-java-boot3.yaml`](./rules/semgrep/modern-java-boot3.yaml) are validated and unit-tested (`semgrep --validate` + `semgrep --test` against [`modern-java-boot3.java`](./rules/semgrep/modern-java-boot3.java)) in CI on every push.
 
 ---
 
@@ -209,7 +214,7 @@ Modeled after `GoogleChrome/modern-web-guidance`, we maintain an automated asser
 
 | Skill / Repo | Initial `SKILL.md` Size | Executable CLI | Auto Version Detect | `PostToolUse` Hook | Zero IDE/MCP Deps |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`modern-java-guidance` (`mjg`)** | **4,157 bytes** | ✅ `mjg check` / `search` / `retrieve` | ✅ `pom.xml` / Gradle | ✅ Antigravity & Claude | ✅ Python stdlib only |
+| **`modern-java-guidance` (`mjg`)** | **4,960 bytes** | ✅ `mjg check` / `search` / `retrieve` / `export` | ✅ Multi-module Maven & Gradle | ✅ Antigravity & Claude | ✅ Python stdlib only |
 | **`github/awesome-copilot`** (`java-springboot` + `spring-security`) | 9,737 bytes | ❌ Markdown only | ⚠️ Manual read | ❌ None | ✅ |
 | **`Amplicode/spring-skills`** (`spring-security-configuration`) | 17,344 bytes | ❌ None | ⚠️ IntelliJ MCP | ❌ None | ❌ Requires IntelliJ MCP |
 | **`Santoshrt999/Java-Claude-Skills`** (`java-modernization-review`) | 20,103 bytes | ❌ Markdown only | ❌ None | ❌ None | ✅ |

@@ -57,7 +57,7 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 
 ## What's Included?
 
-涵盖现代 **Java 17 / 21 / 25+** 与 **Spring Boot 3.x+** 核心实践。`SKILL.md` 仅 **4.1 KB**，详细的前后对比示例通过 `mjg search` 与 `mjg retrieve` 按需加载。
+涵盖现代 **Java 17 / 21 / 25+** 与 **Spring Boot 3.x+** 核心实践。`SKILL.md` 仅 **4.8 KB**，详细的前后对比示例通过 `mjg search` 与 `mjg retrieve` 按需加载。
 
 ### Core Disciplines
 
@@ -68,9 +68,9 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 * **🏛️ Jakarta EE 10 与依赖注入**：`jakarta.*` 迁移、构造函数注入替代 `@Autowired` 字段注入，以及 RFC 9457 `ProblemDetail`。
 * **🛡️ 旧版本兼容性保护**：当 `pom.xml` 或 `build.gradle(.kts)` 面向 Java 8/11 或 Boot 2.x 时，自动关闭 Java 21 与 Boot 3+ 规则。
 
-### 完整规则与指南清单（13 篇指南 · 11 条可执行规则 · Semgrep 导出）
+### 完整规则与指南清单（17 篇指南 · 15 条可执行规则 · 13 条 Semgrep 规则）
 
-**11 条扫描规则中有 7 条在 `javac` 编译时完全静默（零警告）**，其余 4 条可在等待 10–30 秒 Maven/Gradle 构建前以 **~31 ms** 提前拦截。
+**15 条扫描规则中有 10 条在 `javac` 编译时完全静默（零警告）**，其余 5 条可在等待 10–30 秒 Maven/Gradle 构建前以 **~31 ms** 提前拦截。
 
 <details>
 <summary>查看所有指南、编译器重叠情况与版本门控规则</summary>
@@ -79,9 +79,10 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 
 | 规则 / 指南 | 最低版本 | `javac` 是否检出？ | 遗留写法 → 现代替代 |
 | :--- | :--- | :--- | :--- |
-| [`JAVA-001`](./src/modern_java_guidance/guides.py) | Java 8+ (扫描 16+) | **否（静默）** | `new Date()` / `SimpleDateFormat` → `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`) |
+| [`JAVA-001`](./src/modern_java_guidance/guides.py) | Java 8+ (扫描 16+) | **否（静默）** | `new Date()` / `Calendar.getInstance()` / `SimpleDateFormat` → `java.time` (`Instant`, `LocalDate`, `DateTimeFormatter`) |
 | [`JAVA-002`](./src/modern_java_guidance/guides.py) | Java 9+ (扫描 16+) | **否（静默）** | `Collections.unmodifiableList(Arrays.asList(...))` → `List.of` / `Set.of` / `Map.of` |
 | [`JAVA-003`](./src/modern_java_guidance/guides.py) | Java 15+ (扫描 16+) | **否（静默）** | `String.format(...)`（未显式传 `Locale`）→ `"..." .formatted(...)` |
+| [`JAVA-004`](./src/modern_java_guidance/guides.py) | Java 16+ | **否（静默）** | `.collect(Collectors.toList())` → `Stream.toList()` |
 | [`JAVA-010`](./src/modern_java_guidance/guides.py) | Java 21+ | **否（静默）** | `Executors.newFixedThreadPool` / `newCachedThreadPool` → `Executors.newVirtualThreadPerTaskExecutor()`（阻塞 I/O） |
 | [`JAVA-011`](./src/modern_java_guidance/guides.py) | Java 21+ | **否（静默）** | `list.get(list.size() - 1)` → `SequencedCollection.getLast()` |
 | [`JAVA-012`](./src/modern_java_guidance/guides.py) | Java 21+ *(指南)* | **否（静默）** | 冗长 POJO / `instanceof` 强转 → `record`、`sealed interface`、`switch` 模式匹配 |
@@ -90,27 +91,31 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 
 | 规则 / 指南 | 最低版本 | `javac` 是否检出？ | 遗留写法 → 现代替代 |
 | :--- | :--- | :--- | :--- |
-| [`BOOT-001`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | 编译错误 *(构建期)* | `javax.{persistence,validation,servlet,annotation,transaction}.*` → `jakarta.*` |
+| [`BOOT-001`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | 编译错误 *(构建期)* | `javax.{persistence,validation,servlet,annotation,transaction,inject,mail,xml.bind,ws.rs}.*` → `jakarta.*` |
 | [`BOOT-002`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | 编译错误 *(构建期)* | `extends WebSecurityConfigurerAdapter` → `@Bean SecurityFilterChain` |
 | [`BOOT-003`](./src/modern_java_guidance/guides.py) | Boot 3.2+ | **否（静默）** | `RestTemplate` / `RestTemplateBuilder` → `RestClient` 或 `@HttpExchange` |
-| [`BOOT-004`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | **否（静默）** | `@Autowired` 字段注入 → 构造函数注入（`private final`） |
+| [`BOOT-004`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | **否（静默）** | `@Autowired` 字段注入（自动排除构造函数与测试类）→ 构造函数注入（`private final`） |
 | [`BOOT-005`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | 编译错误 *(构建期)* | `.antMatchers()` / `.mvcMatchers()` / `.authorizeRequests()` → `.authorizeHttpRequests(a -> a.requestMatchers(...))` |
-| [`BOOT-006`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | `@Deprecated` *(构建期)* | `.csrf().disable()` → 默认保留 CSRF；仅对非浏览器凭证（如 Bearer JWT）使用 `.csrf(AbstractHttpConfigurer::disable)` |
+| [`BOOT-006`](./src/modern_java_guidance/guides.py) | Boot 3.0+ | `@Deprecated` *(构建期)* | `.csrf().disable()`（单行/多行）→ 默认保留 CSRF；仅对非浏览器凭证（如 Bearer JWT）使用 `.csrf(AbstractHttpConfigurer::disable)` |
 | [`BOOT-007`](./src/modern_java_guidance/guides.py) | Boot 3.0+ *(指南)* | **否（静默）** | 自定义错误体 → 在 `@RestControllerAdvice` 中返回 RFC 9457 `ProblemDetail` |
+| [`BOOT-008`](./src/modern_java_guidance/guides.py) | Boot 3.4+ | `@Deprecated` *(构建期)* | `@MockBean` / `@SpyBean` → `@MockitoBean` / `@MockitoSpyBean` |
+| [`BOOT-009`](./src/modern_java_guidance/guides.py) | Boot 3.0+ *(构建文件)* | **否（静默）** | `spring-cloud-starter-sleuth` → Micrometer Tracing + OpenTelemetry OTLP |
+| [`BOOT-010`](./src/modern_java_guidance/guides.py) | Boot 3.3+ *(Dockerfile)* | **否（静默）** | 未解压 fat-JAR `java -jar app.jar` → `-Djarmode=tools ... extract`、Buildpacks 或 AppCDS |
 
 </details>
 
 ### Safe Adoption of Modern Features
 
-* **版本门控执行**：仅当检测到的 Java/Spring Boot 版本满足规则最低要求（`min_java`、`min_boot`）时才激活对应规则。
-* **注释感知扫描**：扫描前自动剥离 `//` 与 `/* ... */` 注释，避免注释文字引发误报。
+* **多模块版本门控**：向上合并解析多模块 Maven（`pom.xml` + BOM `<dependencyManagement>`）、Gradle（`build.gradle(.kts)` + `JavaVersion.VERSION_1_8` + `libs.versions.toml`）与 `.java-version`，避免老项目误报。
+* **注释、字符串与文本块感知扫描**：扫描前剥离 `//`、`/* ... */`、`"..."` 与 `"""..."""` 内容，彻底杜绝日志与文档字符串误报。
+* **行内抑制与分级拦截**：支持 `// mjg:ignore JAVA-010`（或 `// mjg:ignore`）抑制合理例外；Claude Code Hook 仅在 `error` 时强制阻断，`warning`/`info` 改为非阻断提示（`--strict` 可全阻断）。
 * **注意事项（Caveats）**：每次通过 `mjg retrieve <ID>` 检索指南时，均附带实战注意事项（例如 JPA `@Entity` 不应使用 `record`）。
 
 ---
 
 ## How It Works
 
-1. **Activation**：编程助手在 Java/Spring Boot 任务中激活 `modern-java-guidance` Skill（`4.1 KB`）。
+1. **Activation**：编程助手在 Java/Spring Boot 任务中激活 `modern-java-guidance` Skill（`4.8 KB`）。
 2. **Version Detection**：运行 `mjg detect .` 解析 `pom.xml`、`build.gradle(.kts)`、`gradle/libs.versions.toml` 或 `.java-version`。
 3. **On-Demand Guide Fetch**：通过 `mjg search "<topic>"` 与 `mjg retrieve <ID>` 按需拉取精确的前后对比代码与注意事项。
 4. **Post-Edit Hook (`PostToolUse`)**：每次编辑 `.java` 后由 `mjg hook` 在 ~31 ms 内自动扫描并拦截或告警。
@@ -129,14 +134,14 @@ uvx --from git+https://github.com/wkd09/modern-java-guidance.git mjg check .
 | **`javac` / Maven / Gradle** | 每次构建 10–30 秒 | ❌ 仅编译错误与 `@Deprecated` | ⚠️ 内循环反馈偏慢 |
 | **IDE (IntelliJ IDEA)** | 人工编辑实时提示 | ⚠️ 部分支持（需要 GUI） | ❌ 无头 CLI Agent 不可用 |
 | **Semgrep (CI / PR 门禁)** | PR / CI 流水线 | ✅ 完整 Java AST 规则 | ✅ 可直接由 `mjg` 导出 |
-| **`mjg` `PostToolUse` Hook** | **每次修改 `.java` ~31 ms** | ✅ **11 条中有 7 条在 `javac` 下静默** + 提前拦截其余 4 条 | ✅ 原生支持 Claude Code & Antigravity |
+| **`mjg` `PostToolUse` Hook** | **每次修改 `.java` ~31 ms** | ✅ **15 条中有 10 条在 `javac` 下静默** + 提前拦截其余 5 条 | ✅ 原生支持 Claude Code & Antigravity |
 
 ### 在 Semgrep 中复用同一套规则（CI 与非 Agent 场景）
 
 可直接在 CI 中运行内置的 Java AST Semgrep 规则集，或根据项目的 `pom.xml` / `build.gradle(.kts)` 导出按版本门控的规则文件：
 
 ```bash
-# 直接运行内置的 Java 21 + Spring Boot 3.2+ Semgrep 规则集
+# 直接运行内置的 Java 21 + Spring Boot 3.4+ Semgrep 规则集
 semgrep --config https://raw.githubusercontent.com/wkd09/modern-java-guidance/main/rules/semgrep/modern-java-boot3.yaml .
 
 # 或根据当前项目检测到的版本导出专属 Semgrep YAML
@@ -144,7 +149,7 @@ mjg export --format semgrep --path . -o .semgrep/modern-java.yaml
 semgrep --config .semgrep/modern-java.yaml .
 ```
 
-[`rules/semgrep/modern-java-boot3.yaml`](./rules/semgrep/modern-java-boot3.yaml) 中的全部 11 条规则均在 CI 中通过 `semgrep --validate` 与 `semgrep --test`（对应 [`modern-java-boot3.java`](./rules/semgrep/modern-java-boot3.java)）自动验证。
+[`rules/semgrep/modern-java-boot3.yaml`](./rules/semgrep/modern-java-boot3.yaml) 中的全部 13 条 Java AST 规则均在 CI 中通过 `semgrep --validate` 与 `semgrep --test`（对应 [`modern-java-boot3.java`](./rules/semgrep/modern-java-boot3.java)）自动验证。
 
 ---
 
@@ -197,7 +202,7 @@ semgrep --config .semgrep/modern-java.yaml .
 
 | Skill / 仓库 | 初始 `SKILL.md` 体积 | 可执行 CLI | 版本自动检测 | `PostToolUse` Hook | 无 IDE/MCP 依赖 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`modern-java-guidance` (`mjg`)** | **4,157 bytes** | ✅ `mjg check` / `search` / `retrieve` | ✅ `pom.xml` / Gradle | ✅ Antigravity & Claude | ✅ 仅 Python 标准库 |
+| **`modern-java-guidance` (`mjg`)** | **4,960 bytes** | ✅ `mjg check` / `search` / `retrieve` / `export` | ✅ 多模块 Maven & Gradle | ✅ Antigravity & Claude | ✅ 仅 Python 标准库 |
 | **`github/awesome-copilot`** (`java-springboot` + `spring-security`) | 9,737 bytes | ❌ 仅 Markdown | ⚠️ 手动读取 | ❌ 无 | ✅ |
 | **`Amplicode/spring-skills`** (`spring-security-configuration`) | 17,344 bytes | ❌ 无 | ⚠️ 依赖 IntelliJ MCP | ❌ 无 | ❌ 依赖 IntelliJ MCP |
 | **`Santoshrt999/Java-Claude-Skills`** (`java-modernization-review`) | 20,103 bytes | ❌ 仅 Markdown | ❌ 无 | ❌ 无 | ✅ |

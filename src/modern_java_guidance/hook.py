@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from modern_java_guidance.detector import detect_project
-from modern_java_guidance.scanner import Finding, scan_file
+from modern_java_guidance.scanner import Finding, scan_target
 
 
 def extract_target_paths(payload: dict[str, object]) -> list[Path]:
@@ -56,7 +56,16 @@ def format_findings_message(findings: list[Finding]) -> str:
     return "\n".join(lines)
 
 
-def run_hook(hook_format: str, raw_stdin: str | None = None) -> tuple[int, str, str]:
+def _is_scannable_file(path: Path) -> bool:
+    if not path.is_file():
+        return False
+    if path.suffix == ".java":
+        return True
+    name = path.name
+    return name in {"pom.xml", "build.gradle", "build.gradle.kts", "libs.versions.toml", "Dockerfile"} or name.startswith("Dockerfile.") or name.endswith(".Dockerfile")
+
+
+def run_hook(hook_format: str, raw_stdin: str | None = None, *, strict: bool = False) -> tuple[int, str, str]:
     """Process stdin hook JSON and return (exit_code, stdout_json, stderr_msg)."""
     text = raw_stdin if raw_stdin is not None else sys.stdin.read()
     if not text.strip():
@@ -70,14 +79,14 @@ def run_hook(hook_format: str, raw_stdin: str | None = None) -> tuple[int, str, 
     if not isinstance(payload, dict):
         return 0, "{}", ""
 
-    java_files = [p for p in extract_target_paths(payload) if p.suffix == ".java" and p.is_file()]
-    if not java_files:
+    target_files = [p for p in extract_target_paths(payload) if _is_scannable_file(p)]
+    if not target_files:
         return 0, "{}", ""
 
     all_findings: list[Finding] = []
-    for jf in java_files:
-        profile = detect_project(jf)
-        all_findings.extend(scan_file(jf, profile))
+    for tf in target_files:
+        profile = detect_project(tf)
+        all_findings.extend(scan_target(tf, profile))
 
     if not all_findings:
         return 0, "{}", ""
@@ -85,10 +94,23 @@ def run_hook(hook_format: str, raw_stdin: str | None = None) -> tuple[int, str, 
     summary = format_findings_message(all_findings)
 
     if hook_format == "claude":
+        has_error = any(f.severity == "error" for f in all_findings)
+        if has_error or strict:
+            out = json.dumps(
+                {
+                    "decision": "block",
+                    "reason": summary,
+                },
+                ensure_ascii=False,
+            )
+            return 0, out, ""
+        # Non-blocking advisory context for warning/info-only findings
         out = json.dumps(
             {
-                "decision": "block",
-                "reason": summary,
+                "hookSpecificOutput": {
+                    "hookEventName": "PostToolUse",
+                    "additionalContext": summary,
+                }
             },
             ensure_ascii=False,
         )
